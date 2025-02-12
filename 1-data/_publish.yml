@@ -1,0 +1,4 @@
+- source: 1-exposure-datasets.qmd
+  quarto-pub:
+    - id: 8fd57683-1224-4aba-9a59-36f356d3ee16
+      url: 'https://drexelccuh.quarto.pub/ms1---exposure-datasets'

@@ -8,7 +8,7 @@ context = lst(
   df_pct_primary =    file.path(server,'df_pct_primary.parquet'),
   df_nbhd_pop_dens =    file.path(server,'df_nbhd_pop_dens.parquet'),
 )
-df_nbhd_pop_dens
+ 
 
 ## Philadelphia tracts
 xwalk_tract10 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/xwalk_tract10_v1/xwalk_tract10_v1.parquet" |> 
