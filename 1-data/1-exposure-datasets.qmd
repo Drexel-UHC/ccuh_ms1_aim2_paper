@@ -1,0 +1,252 @@
+---
+title: "MS1 - Exposure datasets"
+date: last-modified
+format: 
+  html:
+    toc: true
+    self-contained: true
+    code-fold: false
+    df-print: kable
+    code-tools: true
+comments:
+  hypothesis: 
+    theme: clean
+editor: source
+execute:  
+  warning: false
+  message: false
+  eval: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| code-summary: "Setup"
+#| code-fold: true
+
+
+library(tidyverse)
+library(arrow)
+library(reactable)
+
+source("0-context.R")
+```
+
+
+
+
+# Percent Green
+
+
+## SALURBAL (BECGSPCT)
+
+Let's first see what geographic levels this variables is available for
+
+```{r}
+#| code-summary: "SALURBAL"
+
+## Connect to BEC database
+salurbal_BEC__v2 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_BEC__v2/salurbal_BEC__v2.parquet" |> 
+   arrow::open_dataset() 
+
+## Query for all BECGSPCT data
+df_salurbal_BEC__v2__pct_green = salurbal_BEC__v2 |> 
+    select(iso2, geo, salid, year, BECGSPCT) |> 
+    filter(!is.na(BECGSPCT)) |> 
+    collect()
+
+## Preview
+df_salurbal_BEC__v2__pct_green %>% 
+  sample_n(10) %>% 
+  head()
+```
+
+
+Just to see availability across country and geographic level. 
+
+```{r}
+df_salurbal_BEC__v2__pct_green %>% 
+  count(iso2, geo) %>% 
+  arrange(iso2)
+```
+
+Note that the `BECGSPCT` variable is cross sectional for SALURBAL with an unspecified year. But we will use the most granular available which is L3 for all three countries. 
+
+## USA
+
+Here we reference the [CCUH Percent Green dataset](https://www.notion.so/drexel-ccuh/NCLD-Percent-Greeness-Dataset-18a57008e8858036b531ce4f6c762bf7)
+
+```{r}
+#| code-fold: false
+
+## Connect to database
+ccuh_pct_green__v1 =  "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/fed_data_v1/ccuh_pct_green__v1.parquet" |> arrow::open_dataset() 
+
+## Query
+df_ccuh_pct_green__v1 = ccuh_pct_green__v1 |>collect()
+
+## Preview
+head(df_ccuh_pct_green__v1)
+```
+
+let see available across geographic levels and year.
+
+```{r}
+df_ccuh_pct_green__v1 %>% 
+  count(geo, year) %>% 
+  summarize(year = paste(unique(year), collapse = ','), .by = geo)
+```
+
+
+## Harmonization
+
+So for percent green space we will use the most granular data available for SALURBAL and for Philadelphia. Lets pull and harmonize into a single data structure here.
+
+```{r}
+
+## SALURBAL
+df_nbhd_pct_green_salurbal = df_salurbal_BEC__v2__pct_green %>% 
+  filter(geo == 'L3') %>% 
+  mutate(parent =  'SALURBAL BECGSPCT',
+         year = as.numeric(year)) %>% 
+  rename(pct_green = BECGSPCT, geoid = salid) 
+  
+## USA
+df_nbhd_pct_green_usa = df_ccuh_pct_green__v1 %>% 
+  filter(geo == 'tract10',
+         geoid %in% vec__philadelphia_tracts,
+         year == 2016) %>% 
+  mutate(iso2 = 'USA - Philadelphia',
+         parent = 'ccuh_pct_green__v1' ) %>% 
+  select(iso2, geo, geoid, pct_green, parent)
+  
+
+## CCUH MS1
+df_nbhd_pct_green = bind_rows(
+  df_nbhd_pct_green_salurbal,
+  df_nbhd_pct_green_usa
+)
+df_nbhd_pct_green %>% write_parquet(context$df_pct_green)
+```
+
+## QC
+
+Quick visual isnpections
+
+```{r}
+df_nbhd_pct_green %>% 
+  ggplot(aes(x = pct_green)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "steelblue", alpha = 0.7) +
+  geom_density(color = "red", linewidth = 1) +
+  facet_wrap(~iso2, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Distribution of % Green Space ",
+    x = "Percentage of Green Space",
+    y = "Density"
+  ) +
+  theme(
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+  )
+```
+
+
+## Access
+
+```{{r}}
+df_pct_green =  "`r context$df_pct_green`" |> 
+  arrow::open_dataset() %>% 
+  arrow::collect()
+```
+
+# Education variables
+
+## SALURBAL (CNSMINPR)
+
+
+Let's first see what geographic levels this variables is available for
+
+```{r}
+#| code-summary: "SALURBAL"
+
+## Connect to database
+salurbal_SEC_Census__v1 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_SEC_Census__v1/salurbal_SEC_Census__v1.parquet" |> 
+   arrow::open_dataset() 
+
+## Query for all CNSMINPR data
+df_cnsminpr = salurbal_SEC_Census__v1 |>
+   select(iso2, geo, salid, year, CNSMINPR) %>% 
+   collect() %>% 
+   filter(!is.na(CNSMINPR))
+
+## Preview
+df_cnsminpr %>% 
+  sample_n(10) %>% 
+  head()
+```
+
+
+Just to see availability across country and geographic level. 
+
+```{r}
+df_cnsminpr %>% 
+  count(iso2, year, geo) %>% 
+  arrange(iso2)
+```
+
+Note that the `CNSMINPR` variable is longitudinal for SALURBAL. But we will use the most granular available which is L3 for everythign but BR which is L2_5. 
+
+
+## USA
+
+Here we reference the [CCUH USA Neighborhood (ACS Dataset)](https://www.notion.so/drexel-ccuh/USA-Neighborhood-ACS-Dataset-15e57008e885804c8a73cdd75b618c34)
+
+```{r}
+#| code-fold: false
+
+## Connect to database
+acs_v1 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/acs_v1/acs__v1.parquet" |> 
+  arrow::open_dataset()
+
+## Query for 
+
+## Preview
+head(df_ccuh_pct_green__v1)
+```
+
+let see available across geographic levels and year.
+
+```{r}
+df_ccuh_pct_green__v1 %>% 
+  count(geo, year) %>% 
+  summarize(year = paste(unique(year), collapse = ','), .by = geo)
+```
+
+## egacy
+
+We want to pull CNSMINPR_L2 from SALURBAL and see waht geographic levels avialable and get data. 
+
+
+```{r}
+#| code-fold: false
+
+salurbal_SEC_Census__v1 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_SEC_Census__v1/salurbal_SEC_Census__v1.parquet" |> 
+   arrow::open_dataset() 
+
+df_cnsminpr = salurbal_SEC_Census__v1 |>
+   select(iso2, geo, salid, year, CNSMINPR) %>% 
+   collect() %>% 
+   filter(!is.na(CNSMINPR))
+
+glimpse(df_pct_primary)
+```
+
+Now lets see what geo levels acvailable for country.
+
+```{r}
+df_pct_primary |> 
+    count(geo, iso2, year) |> 
+    arrange(iso2)
+```
