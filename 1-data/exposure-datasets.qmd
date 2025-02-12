@@ -18,3 +18,33 @@ df_data = ds |>
 df_data |> 
     count(geo, iso2)
 ```
+
+# Education variables
+
+We want to pull CNSMINPR_L2 from SALURBAL and see waht geographic levels avialable and get data. 
+
+
+```{r}
+
+library(arrow)
+library(tidyverse)
+
+
+ds = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_SEC_Census__v1/salurbal_SEC_Census__v1.parquet" |> 
+   arrow::open_dataset() 
+
+df_pct_primary = ds |>
+   select(iso2, geo, salid, year, CNSMINPR) %>% 
+   collect() %>% 
+   filter(!is.na(CNSMINPR))
+
+glimpse(df_pct_primary)
+```
+
+Now lets see what geo levels acvailable for country.
+
+```{r}
+df_pct_primary |> 
+    count(geo, iso2, year) |> 
+    arrange(iso2)
+```
