@@ -1,0 +1,35 @@
+---
+title: "MS1 - Death records datasets"
+date: last-modified
+format: 
+  html:
+    toc: true
+    self-contained: true
+    code-fold: false
+    df-print: kable
+    code-tools: true
+comments:
+  hypothesis: 
+    theme: clean
+editor: source
+execute:  
+  warning: false
+  message: false
+  eval: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| code-summary: "Setup"
+#| code-fold: true
+
+
+library(tidyverse)
+library(arrow)
+library(reactable)
+
+source("0-context.R")
+```
+
+
