@@ -4,10 +4,8 @@ context = lst(
   server = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_manuscripts/ccuh-server-MS1/v1.0",
   dbt = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/dev",
   ## Files
-  df_pct_green =    file.path(
-    server,
-    'df_pct_green.parquet'
-  )
+  df_pct_green =    file.path(server,'df_pct_green.parquet'),
+  df_pct_primary =    file.path(server,'df_pct_primary.parquet'),
 )
 
 

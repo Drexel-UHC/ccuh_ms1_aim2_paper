@@ -196,7 +196,7 @@ df_cnsminpr %>%
   arrange(iso2)
 ```
 
-Note that the `CNSMINPR` variable is longitudinal for SALURBAL. But we will use the most granular available which is L3 for everythign but BR which is L2_5. 
+Note that the `CNSMINPR` variable is longitudinal for SALURBAL. But we will use the most granular available which is L3 for everythign but BR which is L2_5. Also we will pull just for more recent year available for each country.
 
 
 ## USA
@@ -210,43 +210,89 @@ Here we reference the [CCUH USA Neighborhood (ACS Dataset)](https://www.notion.s
 acs_v1 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/acs_v1/acs__v1.parquet" |> 
   arrow::open_dataset()
 
-## Query for 
+## Query for two variables ACS_MINPR and pct_high_school
+df_education_acs = acs_v1 %>% 
+  select(geoid, year, geo, ACS_MINPR, pct_bachelors) %>% 
+  collect() 
 
 ## Preview
-head(df_ccuh_pct_green__v1)
+head(df_education_acs)
 ```
 
 let see available across geographic levels and year.
 
 ```{r}
-df_ccuh_pct_green__v1 %>% 
-  count(geo, year) %>% 
-  summarize(year = paste(unique(year), collapse = ','), .by = geo)
+df_education_acs %>% 
+  pivot_longer(cols = c(ACS_MINPR, pct_bachelors)) %>% 
+  count(geo, year, name) %>% 
+  summarize(year = paste(unique(year), collapse = ','), 
+            .by =c( geo, name))
 ```
 
-## egacy
+## Harmonization
 
-We want to pull CNSMINPR_L2 from SALURBAL and see waht geographic levels avialable and get data. 
-
+So for percent education atinament space we will use the most granular data available for SALURBAL and for Philadelphia. Lets pull and harmonize into a single data structure here.
 
 ```{r}
-#| code-fold: false
 
-salurbal_SEC_Census__v1 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_SEC_Census__v1/salurbal_SEC_Census__v1.parquet" |> 
-   arrow::open_dataset() 
+## SALURBAL
+df_pct_primary_salurbal = df_cnsminpr  %>%
+  filter(
+    (iso2 %in% c("PA", "GT") & geo == "L3") |
+    (iso2 == "BR" & geo == "L2_5")
+  )  %>% 
+  mutate(parent =  'salurbal_SEC_Census__v1',
+         year = as.numeric(year)) %>% 
+  rename(pct_primary = CNSMINPR, geoid = salid) 
+  
+## USA
+df_pct_primary_philadelphia = df_education_acs %>% 
+  filter(geo == 'tract',
+         geoid %in% vec__philadelphia_tracts,
+         year == 2016) %>% 
+  mutate(iso2 = 'USA - Philadelphia',
+         parent = 'ccuh_pct_green__v1' ) %>% 
+  select(iso2, geo, geoid, 
+         pct_primary = ACS_MINPR, 
+         parent)
+  
 
-df_cnsminpr = salurbal_SEC_Census__v1 |>
-   select(iso2, geo, salid, year, CNSMINPR) %>% 
-   collect() %>% 
-   filter(!is.na(CNSMINPR))
-
-glimpse(df_pct_primary)
+## CCUH MS1
+df_pct_primary = bind_rows(
+  df_pct_primary_salurbal,
+  df_pct_primary_philadelphia
+)
+df_pct_primary %>% write_parquet(context$df_pct_primary)
 ```
 
-Now lets see what geo levels acvailable for country.
+## QC
+
+Quick visual inspection
 
 ```{r}
-df_pct_primary |> 
-    count(geo, iso2, year) |> 
-    arrange(iso2)
+df_pct_primary %>% 
+  ggplot(aes(x = pct_primary)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "steelblue", alpha = 0.7) +
+  geom_density(color = "red", linewidth = 1) +
+  facet_wrap(~iso2, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Distribution of % primary  ",
+    x = "Percentage of primary ",
+    y = "Density"
+  ) +
+  theme(
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+  )
+```
+
+
+## Access
+
+```{{r}}
+df_pct_primary =  "`r context$df_pct_primary`" |> 
+  arrow::open_dataset() %>% 
+  arrow::collect()
 ```
