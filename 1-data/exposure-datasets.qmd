@@ -1,0 +1,20 @@
+
+# Percent Green
+
+
+Let's first see what geographic levels this variables is available for
+```{r}
+library(arrow)
+library(tidyverse)
+
+ds = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_BEC__v2/salurbal_BEC__v2.parquet" |> 
+   arrow::open_dataset() 
+
+df_data = ds |> 
+    select(iso2, geo,BECGSPCT) |> 
+    filter(!is.na(BECGSPCT)) |> 
+    collect()
+
+df_data |> 
+    count(geo, iso2)
+```
