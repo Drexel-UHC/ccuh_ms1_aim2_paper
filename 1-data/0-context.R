@@ -8,7 +8,8 @@ context = lst(
   df_pct_primary =    file.path(server,'df_pct_primary.parquet'),
   df_nbhd_pop_dens =    file.path(server,'df_nbhd_pop_dens.parquet'),
   df_mort = file.path(server, 'df_mort.parquet'),
-  df_mort_age = file.path(server, 'df_mort_age.parquet')
+  df_mort_age = file.path(server, 'df_mort_age.parquet'),
+  df_city_temp = file.path(server, 'df_city_temp.parquet')
   
 )
  

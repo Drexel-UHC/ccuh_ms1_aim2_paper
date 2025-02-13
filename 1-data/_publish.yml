@@ -2,3 +2,11 @@
   quarto-pub:
     - id: 8fd57683-1224-4aba-9a59-36f356d3ee16
       url: 'https://drexelccuh.quarto.pub/ms1---exposure-datasets'
+- source: 2-mortality-datasets.qmd
+  quarto-pub:
+    - id: 9e10c0b3-6192-4c6b-abcd-ef1eb886adf3
+      url: 'https://drexelccuh.quarto.pub/ms1---death-counts-datasets'
+- source: 3-city-temperature-datasets.qmd
+  quarto-pub:
+    - id: b85b5331-2634-49b3-ae51-0d3b687d9fb4
+      url: 'https://drexelccuh.quarto.pub/ms1---city-temperature--datasets'

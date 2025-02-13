@@ -1,0 +1,152 @@
+---
+title: "MS1 - City Temperature  datasets"
+date: last-modified
+format: 
+  html:
+    toc: true
+    self-contained: true
+    code-fold: false
+    df-print: kable
+    code-tools: true
+comments:
+  hypothesis: 
+    theme: clean
+editor: source
+execute:  
+  warning: false
+  message: false
+  eval: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| code-summary: "Setup"
+#| code-fold: true
+
+
+library(tidyverse)
+library(arrow)
+library(assertr)
+
+source("0-context.R")
+```
+
+# Components
+
+## SALURBAL
+
+
+The [SALURBAL TMPDAILY v2 (Dataset)](https://www.notion.so/drexel-ccuh/SALURBAL-TMPDAILY-v2-Dataset-19257008e885805ab03ff9d5bd19e5f7) was used to operationalize desired SALURBAL temperature daily. Note that this dataset contains both unweighted and population weighted daily city level temperature. 
+
+```{r}
+#| code-summary: "Create aggregate data for L2 for over/under 65."
+
+## Connect to CCUH database
+db_tmpdaily_v2 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_TMPDAILY__v2/salurbal_TMPDAILY__v2.parquet" |> 
+   arrow::open_dataset() 
+
+## Query
+df_daily_temp_salurbal <- db_tmpdaily_v2  %>% 
+  filter(geo == 'L1AD', iso2%in% c("BR",'GT','PA')) %>% 
+  select(geo, salid, year, iso2, date, TEMPX, TEMPPW) %>% 
+  collect() 
+
+## Preview
+glimpse(df_daily_temp_salurbal)
+```
+
+Okay looks good. 
+
+## USA
+
+We will pull population weighted will pull from the [CCUH PRISM County10 zonal statics dataset](https://www.notion.so/drexel-ccuh/PRISM-County10-zonal-statistics-12657008e88580b29902e1d2afee6e03).
+
+```{r}
+
+## Connect to data model 
+db_prism ="//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH_read_only_access/PRISM/prism_zonal_stats_v1/clean/county10.parquet" |> 
+  arrow::open_dataset() 
+
+
+
+## DSPH Neighborhood counts
+df_daily_temp_phl <- db_prism  %>% 
+  filter(state == 'PA',
+         measure == 'tmean') %>% 
+  collect() %>% 
+  filter(geoid == '42101') %>% 
+  pivot_wider(names_from = measure, values_from = value)
+
+## Preview
+glimpse(df_daily_temp_phl)
+```
+
+We will get the population weighted averages from our datawarehouse.
+
+
+```{r}
+
+```
+
+# Harmonized
+
+Now let's harmonize into a single dataset. 
+
+## Counts
+
+```{r}
+
+## SALURBAL
+df_salurbal = df_daily_temp_salurbal %>% 
+  left_join(xwalk_l2 %>% select(salid = salid1, salid1_name) %>% distinct())%>%
+  mutate( city_geo = 'L1AD') %>%
+  select(iso2, city_geo, city_geoid = salid, city_name = salid1_name,
+         geo,  date, temperature = TEMPX)
+
+
+## Philadelphia
+df_usa = df_daily_temp_phl %>% 
+  mutate(iso2 = 'US', 
+         city_geo = 'county10',
+         city_geoid = '42101', 
+         city_name = 'Philadelphia County') %>% 
+  select(iso2, city_geo, city_geoid , city_name ,
+         geo,  date, temperature = tmean)
+
+
+## Harmonized
+df_city_temp = bind_rows(df_salurbal, df_usa)
+df_city_temp %>% arrow::write_parquet(context$df_city_temp)
+```
+
+Let's preview
+
+```{r}
+df_city_temp %>% 
+  group_by(iso2) %>% 
+  slice(1:2) 
+```
+
+Let's do a quick plot of a single city in eachc ountry. 
+
+```{r}
+vec__geoid = df_city_temp %>% group_by(iso2) %>% slice(1) %>% pull(city_geoid)
+df_city_temp %>% 
+  mutate(iso2_geo = glue::glue("{iso2} ({city_geo})")) %>% 
+  filter(city_geoid %in% vec__geoid) %>% 
+  ggplot(aes(x = date, y = temperature))+
+  geom_line() +
+  facet_wrap(~iso2_geo) +
+  labs(title = 'Daily temperature for a city in each country')+
+  theme_minimal()
+```
+ 
+
+# Access
+
+```{{r}}
+df_city_temp =  "`r context$df_city_temp`" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect()
+```
