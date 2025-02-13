@@ -10,3 +10,7 @@
   quarto-pub:
     - id: b85b5331-2634-49b3-ae51-0d3b687d9fb4
       url: 'https://drexelccuh.quarto.pub/ms1---city-temperature--datasets'
+- source: 99-final-bundle.qmd
+  quarto-pub:
+    - id: 96b0fb9e-0653-4a39-81a1-09d726ad31ef
+      url: 'https://drexelccuh.quarto.pub/ccuh-ms1----manuscript-data-inventory'

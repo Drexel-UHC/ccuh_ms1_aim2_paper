@@ -1,0 +1,159 @@
+---
+title: "CCUH MS1 -  Manuscript Data Inventory"
+date: last-modified
+format: 
+  html:
+    toc: true
+    self-contained: true
+    code-fold: false
+    df-print: kable
+    code-tools: true
+comments:
+  hypothesis: 
+    theme: clean
+editor: source
+execute:  
+  warning: false
+  message: false
+  eval: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| code-summary: "Setup"
+#| code-fold: true
+
+
+library(tidyverse)
+library(arrow)
+library(assertr)
+
+source("0-context.R")
+```
+
+
+
+Here we compile and inventory the final data structures from the requested components. This is an early draft pending calcification on harmonization scheme (what levels and variables across countries).
+
+But we will have two datasets:
+
+1. Daily datasets (city + sub-city data merged)
+2. Neighborhood level exposure data
+
+You can access all these data here.
+
+```{{r}}
+df_subcity_daily =  "`r context$df_subcity_daily`" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect()
+  
+df_subcity_daily_age =  "`r context$df_subcity_daily_age`" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect()
+  
+df_pct_green =  "`r context$df_pct_green`" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect()
+  
+df_pct_primary =  "`r context$df_pct_primary`" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect()
+  
+df_nbhd_pop_dens =  "`r context$df_nbhd_pop_dens`" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect()
+```
+
+Below just previews.
+
+# Daily dataset
+
+
+This will include sub-city death counts with city level daily temperature merged in. Note that we have two death counts datasets (total and by age group).
+
+
+## Counts
+
+```{r}
+
+## Components
+df_city_temp = context$df_city_temp %>% 
+  open_dataset() %>% 
+  select(city_geoid, date, temperature) %>% 
+  collect()
+df_mort = context$df_mort %>% read_parquet()
+
+
+## Merge
+df_subcity_daily = df_mort %>% left_join(df_city_temp)
+df_subcity_daily %>%  arrow::write_parquet(context$df_subcity_daily)
+
+## Preview
+df_subcity_daily %>% glimpse()
+```
+
+Looks good 
+
+## Counts by Age 
+
+```{r}
+
+## Components
+df_mort_age = context$df_mort_age %>% read_parquet()
+
+
+## Merge
+df_subcity_daily_age = df_mort_age %>% 
+  left_join(df_city_temp)
+
+## Preview
+df_subcity_daily_age %>% glimpse()
+```
+
+# Cross sectional datasets
+
+We have neighrbohood data at a few levels; Derekw ill figure out how to use them and the appropriate data structures.
+
+## Components
+
+### Greeness
+
+```{r}
+df_pct_green = context$df_pct_green %>%
+  read_parquet() 
+glimpse(df_pct_green)
+```
+
+
+
+### Education
+
+```{r}
+df_pct_primary = context$df_pct_primary %>% 
+  read_parquet() 
+glimpse(df_pct_primary)
+```
+
+
+### Pop. Density
+
+```{r}
+df_nbhd_pop_dens = context$df_nbhd_pop_dens %>% 
+  read_parquet() 
+glimpse(df_nbhd_pop_dens)
+```
+ 
+## Summary
+
+```{r}
+list(
+  df_pct_green %>% count(iso2, geo) %>% mutate(var = 'pct_green'),
+  df_pct_primary %>% count(iso2, geo) %>% mutate(var = 'pct_primary'),
+  df_nbhd_pop_dens %>% count(iso2, geo) %>% mutate(var = 'pop_dens')
+) %>% 
+  bind_rows() %>% 
+  select(-n) %>% 
+  select(var, iso2, geo) %>% 
+  pivot_wider(names_from = iso2, values_from = geo)
+```
