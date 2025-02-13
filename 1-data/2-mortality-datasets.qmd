@@ -27,32 +27,25 @@ editor_options:
 
 library(tidyverse)
 library(arrow)
-library(reactable)
+library(assertr)
 
 source("0-context.R")
 ```
 
+# Components
 
-# SALURBAL
+## SALURBAL
 
-The SALURBAL harmonized DIN dataset was used to pull this data. For the analysis in Aims 1 and 2 of the CCUH project, we include the following variables:
 
-- **salid1**, **salid2**,
-- **year**, **month**, **day**,
-- **dinage**.
-
-The following variables will be added
-
-- **date**, **dow**.
-
+The [`harmonized__salurbal_din__v1` data model](https://ccuh-dbt.netlify.app/#!/model/model.ccuh_datawarehouse.harmonized__salurbal_din__v1?g_v=1&g_i=%2Bharmonized__salurbal_din__v1%2B) was used to operationalize desired SALURBAL Death counts. 
 
 ```{r}
 #| code-summary: "Create aggregate data for L2 for over/under 65."
 
 ## Connect to hamronized DIN database v1
 db_harmonized__salurbal_din__v1 = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/dev/harmonized__salurbal_din__v1.parquet' %>% 
-  arrow::open_dataset()|> 
-  rename(date = dod, age = dinage )
+  arrow::open_dataset() |> 
+  rename(date = dod, age = dinage ) 
 
 ## L2 counts
 df_L2 <- db_harmonized__salurbal_din__v1  %>% 
@@ -60,7 +53,6 @@ df_L2 <- db_harmonized__salurbal_din__v1  %>%
   collect() %>% 
   complete(salid2, date, fill = list(death = 0)) |> 
   arrange(salid2, date)
-arrow::write_parquet(df_L2, context$df_l2_mort)
 
 ## L2 by age group counts
 df_L2_age <- db_harmonized__salurbal_din__v1 |> 
@@ -70,5 +62,114 @@ df_L2_age <- db_harmonized__salurbal_din__v1 |>
   complete(salid2, date, age_category,
            fill = list(death = 0)) |> 
   arrange(salid2, date)
-arrow::write_parquet(df_L2_age, context$df_l2_age_mort)
+```
+
+Limitations note -  that PA is missing almost half of counts due to missing `DAY` coded as 98 or 99 - these are collapsed in to date of `NA`.
+
+
+## USA
+
+This will pull from the [`base__pennsylvania_recrods_death_v1` data model](https://ccuh-dbt.netlify.app/#!/model/model.ccuh_datawarehouse.base__pennsylvania_records_death_v1?g_v=1&g_i=%2Bbase__pennsylvania_records_death_v1%2B).
+
+```{r}
+
+## Connect to data model 
+db_base__pennsylvania_records_death_v1 = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/dev/base__pennsylvania_records_death_v1.parquet' %>% 
+  arrow::open_dataset() %>% 
+  rename(date = dod, age = age_death )
+
+
+## DSPH Neighborhood counts
+df_phl_nbhd <- db_base__pennsylvania_records_death_v1  %>% 
+  summarize(death = n(), .by = c(geoid_dsph_nbhd, date)) |> 
+  collect() %>% 
+  complete(geoid_dsph_nbhd, date, fill = list(death = 0)) |> 
+  arrange(geoid_dsph_nbhd, date) 
+
+## L2 by age group counts
+df_phl_nbhd_age <- db_base__pennsylvania_records_death_v1 |> 
+  mutate(age_category = ifelse(age <= 64, "<65", "65+")) |> 
+  summarize(death = n(), .by = c(geoid_dsph_nbhd, date, age_category)) |> 
+  collect() %>% 
+  complete(geoid_dsph_nbhd, date, age_category,
+           fill = list(death = 0)) |> 
+  arrange(geoid_dsph_nbhd, date) 
+```
+
+# Harmonized
+
+Now let's combine these two types of counts
+
+
+## Counts
+
+```{r}
+
+## SALURBAL
+df_mort_salurbal = df_L2 %>% 
+  left_join(xwalk_l2 %>% select(salid2, iso2, salid1, salid1_name))%>% 
+  mutate(geo = 'L2', city_geo = 'L1AD') %>% 
+  select(iso2, city_geo, city_geoid = salid1, city_name = salid1_name,
+         geo, geoid = salid2,  date, death)
+
+
+## Philadelphia
+df_mort_usa = df_phl_nbhd %>% 
+  mutate(geo = 'DSPH Nbhd',
+         iso2 = 'US', 
+         city_geo = 'count10',
+         city_geoid = '42101', 
+         city_name = 'Philadelphia County')%>% 
+  select(iso2, city_geo, city_geoid , city_name ,
+         geo, geoid = geoid_dsph_nbhd ,  date, death)
+
+
+## Harmonized
+df_mort = bind_rows(df_mort_salurbal, df_mort_usa)
+df_mort %>% arrow::write_parquet(context$df_mort)
+```
+
+Let's preview
+
+```{r}
+df_mort %>% 
+  group_by(iso2) %>% 
+  slice(1:2) 
+```
+
+
+## Counts by age 
+
+```{r}
+
+## SALURBAL
+df_mort_age_salurbal = df_L2_age %>% 
+  left_join(xwalk_l2 %>% select(salid2, iso2, salid1, salid1_name))%>% 
+  mutate(geo = 'L2', city_geo = 'L1AD') %>% 
+  select(iso2, city_geo, city_geoid = salid1, city_name = salid1_name,
+         geo, geoid = salid2,  date, age_category , death)
+
+
+## Philadelphia
+df_mort_age_usa = df_phl_nbhd_age %>% 
+  mutate(geo = 'DSPH Nbhd',
+         iso2 = 'US', 
+         city_geo = 'count10',
+         city_geoid = '42101', 
+         city_name = 'Philadelphia County')%>% 
+  select(iso2, city_geo, city_geoid , city_name ,
+         geo, geoid = geoid_dsph_nbhd ,  date, age_category, death)
+
+
+## Harmonized
+df_mort_age = bind_rows(df_mort_age_salurbal, df_mort_age_usa)
+df_mort_age %>% arrow::write_parquet(context$df_mort_age)
+```
+
+Let's preview
+
+```{r}
+df_mort_age %>% 
+  group_by(iso2) %>% 
+  slice(1:2)  
 ```

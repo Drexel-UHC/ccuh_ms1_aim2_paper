@@ -7,11 +7,16 @@ context = lst(
   df_pct_green =    file.path(server,'df_pct_green.parquet'),
   df_pct_primary =    file.path(server,'df_pct_primary.parquet'),
   df_nbhd_pop_dens =    file.path(server,'df_nbhd_pop_dens.parquet'),
-  df_l2_mort =    file.path(server,'df_l2_mort.parquet'),
-  df_l2_age_mort =    file.path(server,'df_l2_age_mort.parquet'),
+  df_mort = file.path(server, 'df_mort.parquet'),
+  df_mort_age = file.path(server, 'df_mort_age.parquet')
+  
 )
  
 
+## Crosswalks
+xwalk_l2 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/xwalk_l2_v1/xwalk_l2_v1.parquet" |> 
+  arrow::open_dataset() |>
+  dplyr::collect()
 
 ## SALURBAL Cities of interest
 city_IDs <-  c(`Belo Horizonte` = 102136,
