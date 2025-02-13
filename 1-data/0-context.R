@@ -7,10 +7,21 @@ context = lst(
   df_pct_green =    file.path(server,'df_pct_green.parquet'),
   df_pct_primary =    file.path(server,'df_pct_primary.parquet'),
   df_nbhd_pop_dens =    file.path(server,'df_nbhd_pop_dens.parquet'),
+  df_l2_mort =    file.path(server,'df_l2_mort.parquet'),
+  df_l2_age_mort =    file.path(server,'df_l2_age_mort.parquet'),
 )
  
 
-## Philadelphia tracts
+
+## SALURBAL Cities of interest
+city_IDs <-  c(`Belo Horizonte` = 102136,
+               `Rio de Janeiro` = 102190,
+               `Campinas`       = 102226,
+               `Sao Paulo`      = 102248,
+               `Guatemala City` = 203102,
+               `Panama City`    = 206101)
+
+## Philadelphia Tracts of interest
 xwalk_tract10 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/xwalk_tract10_v1/xwalk_tract10_v1.parquet" |> 
   arrow::read_parquet()
 vec__philadelphia_tracts = xwalk_tract10 %>% 

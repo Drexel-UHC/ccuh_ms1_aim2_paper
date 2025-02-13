@@ -33,3 +33,42 @@ source("0-context.R")
 ```
 
 
+# SALURBAL
+
+The SALURBAL harmonized DIN dataset was used to pull this data. For the analysis in Aims 1 and 2 of the CCUH project, we include the following variables:
+
+- **salid1**, **salid2**,
+- **year**, **month**, **day**,
+- **dinage**.
+
+The following variables will be added
+
+- **date**, **dow**.
+
+
+```{r}
+#| code-summary: "Create aggregate data for L2 for over/under 65."
+
+## Connect to hamronized DIN database v1
+db_harmonized__salurbal_din__v1 = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/dev/harmonized__salurbal_din__v1.parquet' %>% 
+  arrow::open_dataset()|> 
+  rename(date = dod, age = dinage )
+
+## L2 counts
+df_L2 <- db_harmonized__salurbal_din__v1  %>% 
+  summarize(death = n(), .by = c(salid2, date)) |> 
+  collect() %>% 
+  complete(salid2, date, fill = list(death = 0)) |> 
+  arrange(salid2, date)
+arrow::write_parquet(df_L2, context$df_l2_mort)
+
+## L2 by age group counts
+df_L2_age <- db_harmonized__salurbal_din__v1 |> 
+  mutate(age_category = ifelse(age <= 64, "<65", "65+")) |> 
+  summarize(death = n(), .by = c(salid2, date, age_category)) |> 
+  collect() %>% 
+  complete(salid2, date, age_category,
+           fill = list(death = 0)) |> 
+  arrange(salid2, date)
+arrow::write_parquet(df_L2_age, context$df_l2_age_mort)
+```
