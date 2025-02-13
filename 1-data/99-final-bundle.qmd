@@ -65,7 +65,7 @@ df_nbhd_pop_dens =  "`r context$df_nbhd_pop_dens`" |>
   dplyr::collect()
 ```
 
-Below just previews.
+Below we harmnoize across the geographic levels to make sure everything can be linked for analysis. 
 
 # Daily dataset
 

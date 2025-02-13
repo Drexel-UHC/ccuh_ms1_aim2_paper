@@ -81,13 +81,16 @@ db_base__pennsylvania_records_death_v1 = '//files.drexel.edu/colleges/SOPH/Share
 
 ## DSPH Neighborhood counts
 df_phl_nbhd <- db_base__pennsylvania_records_death_v1  %>% 
+  filter(!is.na(geoid_dsph_nbhd)) %>% 
   summarize(death = n(), .by = c(geoid_dsph_nbhd, date)) |> 
   collect() %>% 
   complete(geoid_dsph_nbhd, date, fill = list(death = 0)) |> 
   arrange(geoid_dsph_nbhd, date) 
 
-## L2 by age group counts
-df_phl_nbhd_age <- db_base__pennsylvania_records_death_v1 |> 
+## DSPH Neighborhood counts by age
+df_phl_nbhd_age <- db_base__pennsylvania_records_death_v1 |>
+ filter(!is.na(geoid_dsph_nbhd)) %>% 
+  filter(!is.na(age)) %>% 
   mutate(age_category = ifelse(age <= 64, "<65", "65+")) |> 
   summarize(death = n(), .by = c(geoid_dsph_nbhd, date, age_category)) |> 
   collect() %>% 
@@ -95,6 +98,9 @@ df_phl_nbhd_age <- db_base__pennsylvania_records_death_v1 |>
            fill = list(death = 0)) |> 
   arrange(geoid_dsph_nbhd, date) 
 ```
+
+- Note that Pennsylvania death records had 1,197 (our of > 3 million records) that was missing age; these were filtered out of the age specific death counts table
+
 
 # Harmonized
 
@@ -110,7 +116,8 @@ df_mort_salurbal = df_L2 %>%
   left_join(xwalk_l2 %>% select(salid2, iso2, salid1, salid1_name))%>% 
   mutate(geo = 'L2', city_geo = 'L1AD') %>% 
   select(iso2, city_geo, city_geoid = salid1, city_name = salid1_name,
-         geo, geoid = salid2,  date, death)
+         subcity_geo = geo, subcity_geoid = salid2,  date, 
+         subcity_death = death)
 
 
 ## Philadelphia
@@ -121,11 +128,14 @@ df_mort_usa = df_phl_nbhd %>%
          city_geoid = '42101', 
          city_name = 'Philadelphia County')%>% 
   select(iso2, city_geo, city_geoid , city_name ,
-         geo, geoid = geoid_dsph_nbhd ,  date, death)
+         subcity_geo = geo, subcity_geoid = geoid_dsph_nbhd ,  date, 
+         subcity_death = death)
 
 
 ## Harmonized
-df_mort = bind_rows(df_mort_salurbal, df_mort_usa)
+df_mort = bind_rows(df_mort_salurbal, df_mort_usa) %>% 
+  verify(!is_null(subcity_geoid))%>% 
+  verify(!is_null(city_geoid))
 df_mort %>% arrow::write_parquet(context$df_mort)
 ```
 
@@ -147,22 +157,26 @@ df_mort_age_salurbal = df_L2_age %>%
   left_join(xwalk_l2 %>% select(salid2, iso2, salid1, salid1_name))%>% 
   mutate(geo = 'L2', city_geo = 'L1AD') %>% 
   select(iso2, city_geo, city_geoid = salid1, city_name = salid1_name,
-         geo, geoid = salid2,  date, age_category , death)
+         subcity_geo = geo, subcity_geoid = salid2,  date, age_category,
+         subcity_death = death)
 
 
 ## Philadelphia
 df_mort_age_usa = df_phl_nbhd_age %>% 
   mutate(geo = 'DSPH Nbhd',
          iso2 = 'US', 
-         city_geo = 'count10',
+         city_geo = 'county10',
          city_geoid = '42101', 
          city_name = 'Philadelphia County')%>% 
   select(iso2, city_geo, city_geoid , city_name ,
-         geo, geoid = geoid_dsph_nbhd ,  date, age_category, death)
+         subcity_geo = geo, subcity_geoid = geoid_dsph_nbhd ,  date, 
+        age_category, subcity_death = death)
 
 
 ## Harmonized
-df_mort_age = bind_rows(df_mort_age_salurbal, df_mort_age_usa)
+df_mort_age = bind_rows(df_mort_age_salurbal, df_mort_age_usa) %>% 
+  verify(!is_null(subcity_geoid))%>% 
+  verify(!is_null(city_geoid))
 df_mort_age %>% arrow::write_parquet(context$df_mort_age)
 ```
 
