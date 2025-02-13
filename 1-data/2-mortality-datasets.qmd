@@ -173,3 +173,15 @@ df_mort_age %>%
   group_by(iso2) %>% 
   slice(1:2)  
 ```
+
+# Access
+
+```{{r}}
+df_mort =  "`r context$df_mort`" |> 
+  arrow::open_dataset() %>% 
+  arrow::collect()
+  
+df_mort_age =  "`r context$df_mort_age`" |> 
+  arrow::open_dataset() %>% 
+  arrow::collect()
+```
