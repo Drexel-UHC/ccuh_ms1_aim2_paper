@@ -159,7 +159,7 @@ df_nbhd_pct_green %>%
 ```{{r}}
 df_pct_green =  "`r context$df_pct_green`" |> 
   arrow::open_dataset() %>% 
-  arrow::collect()
+  dplyr::collect()
 ```
 
 # Education variables
@@ -296,7 +296,7 @@ df_pct_primary %>%
 ```{{r}}
 df_pct_primary =  "`r context$df_pct_primary`" |> 
   arrow::open_dataset() %>% 
-  arrow::collect()
+  dplyr::collect()
 ```
 
 # Population Density
@@ -427,5 +427,5 @@ df_nbhd_pop_dens %>%
 ```{{r}}
 df_nbhd_pop_dens =  "`r context$df_nbhd_pop_dens`" |> 
   arrow::open_dataset() %>% 
-  arrow::collect()
+  dplyr::collect()
 ```
