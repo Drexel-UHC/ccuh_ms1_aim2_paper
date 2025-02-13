@@ -28,6 +28,7 @@ editor_options:
 library(tidyverse)
 library(arrow)
 library(reactable)
+library(assertr)
 
 source("0-context.R")
 ```
@@ -108,25 +109,35 @@ So for percent green space we will use the most granular data available for SALU
 df_nbhd_pct_green_salurbal = df_salurbal_BEC__v2__pct_green %>% 
   filter(geo == 'L3') %>% 
   mutate(parent =  'SALURBAL BECGSPCT',
-         year = as.numeric(year)) %>% 
-  rename(pct_green = BECGSPCT, geoid = salid) 
+         year = as.numeric(year),
+         subcity_geoid = str_sub(salid,1,8)) %>% 
+  rename(pct_green = BECGSPCT, nbhd_geoid = salid, nbhd_geo = geo) 
   
 ## USA
 df_nbhd_pct_green_usa = df_ccuh_pct_green__v1 %>% 
   filter(geo == 'tract10',
-         geoid %in% vec__philadelphia_tracts,
+         geoid %in% xwalk_tract10_dsphNbhd$tract10,
          year == 2016) %>% 
   mutate(iso2 = 'USA - Philadelphia',
          parent = 'ccuh_pct_green__v1' ) %>% 
-  select(iso2, geo, geoid, pct_green, parent)
+  select(iso2, geo, tract10 = geoid, year, pct_green, parent) %>% 
+  ## Operationalize sub-city id
+  left_join(xwalk_tract10_dsphNbhd %>% select(-subcity_geo)) %>% 
+  rename(nbhd_geoid = tract10, nbhd_geo = geo)
   
 
 ## CCUH MS1
 df_nbhd_pct_green = bind_rows(
   df_nbhd_pct_green_salurbal,
   df_nbhd_pct_green_usa
-)
+) %>% 
+  select(iso2, subcity_geoid, nbhd_geo, nbhd_geoid, 
+         year, pct_green, parent) %>% 
+  verify(!is.na(subcity_geoid))
 df_nbhd_pct_green %>% write_parquet(context$df_pct_green)
+
+## Preview
+glimpse(df_nbhd_pct_green)
 ```
 
 ## QC
@@ -135,7 +146,7 @@ Quick visual isnpections
 
 ```{r}
 df_nbhd_pct_green %>% 
-  mutate(iso2_geo = glue::glue("{iso2} ({geo})")) %>% 
+  mutate(iso2_geo = glue::glue("{iso2} ({nbhd_geo})")) %>% 
   ggplot(aes(x = pct_green)) +
   geom_histogram(aes(y = ..density..), bins = 30, fill = "steelblue", alpha = 0.7) +
   geom_density(color = "red", linewidth = 1) +
@@ -243,27 +254,37 @@ df_pct_primary_salurbal = df_cnsminpr  %>%
     (iso2 == "BR" & geo == "L2_5")
   )  %>% 
   mutate(parent =  'salurbal_SEC_Census__v1',
-         year = as.numeric(year)) %>% 
-  rename(pct_primary = CNSMINPR, geoid = salid) 
+         year = as.numeric(year),
+         subcity_geoid = str_sub(salid,1,8)) %>% 
+  select(iso2, subcity_geoid,  nbhd_geo = geo, nbhd_geoid = salid, 
+         year, pct_primary = CNSMINPR, parent)
   
 ## USA
 df_pct_primary_philadelphia = df_education_acs %>% 
   filter(geo == 'tract',
-         geoid %in% vec__philadelphia_tracts,
+        geoid %in% xwalk_tract10_dsphNbhd$tract10,
          year == 2016) %>% 
   mutate(iso2 = 'USA - Philadelphia',
-         parent = 'acs_v1' ) %>% 
-  select(iso2, geo, geoid, 
-         pct_primary = ACS_MINPR, 
-         parent)
+         parent = 'acs_v1' )  %>% 
+  rename(tract10 = geoid) %>% 
+  left_join(xwalk_tract10_dsphNbhd %>% select(-subcity_geo)) %>% 
+  select(iso2, subcity_geoid,  nbhd_geo = geo, nbhd_geoid = tract10, 
+         year, pct_primary = ACS_MINPR, parent)
+
   
 
 ## CCUH MS1
 df_pct_primary = bind_rows(
   df_pct_primary_salurbal,
   df_pct_primary_philadelphia
-)
+) %>% 
+  select(iso2, subcity_geoid, nbhd_geo, nbhd_geoid, 
+         year, pct_primary, parent) %>% 
+  verify(!is.na(subcity_geoid))
 df_pct_primary %>% write_parquet(context$df_pct_primary)
+
+## Preview
+glimpse(df_pct_primary)
 ```
 
 ## QC
@@ -272,7 +293,7 @@ Quick visual inspection
 
 ```{r}
 df_pct_primary %>% 
-  mutate(iso2_geo = glue::glue("{iso2} ({geo})")) %>% 
+  mutate(iso2_geo = glue::glue("{iso2} ({nbhd_geo})")) %>% 
   ggplot(aes(x = pct_primary)) +
   geom_histogram(aes(y = ..density..), bins = 30, fill = "steelblue", alpha = 0.7) +
   geom_density(color = "red", linewidth = 1) +
@@ -378,25 +399,36 @@ So for percent green space we will use the most granular data available for SALU
 df_nbhd_pop_dens_salurbal = df_pop_dens_salurbal %>% 
   filter(geo == 'L3') %>% 
   mutate(parent =  'SALURBAL BECPOPDENS',
-         year = as.numeric(year)) %>% 
-  rename(population_density_per_sq_km = BECPOPDENS, geoid = salid) 
+         year = as.numeric(year),
+         subcity_geoid = str_sub(salid,1,8)) %>% 
+  select(iso2, subcity_geoid,  nbhd_geo = geo, nbhd_geoid = salid, 
+         year, population_density_per_sq_km = BECPOPDENS, parent)
   
 ## USA
 df_nbhd_pop_dens_usa = df_pop_dens_acs %>% 
   filter(geo == 'tract',
-         geoid %in% vec__philadelphia_tracts,
+         geoid %in% xwalk_tract10_dsphNbhd$tract10,
          year == 2016) %>% 
   mutate(iso2 = 'USA - Philadelphia',
          parent = 'acs_v1' ) %>% 
-  select(iso2, geo, geoid, population_density_per_sq_km, parent)
+  rename(tract10 = geoid) %>% 
+  left_join(xwalk_tract10_dsphNbhd %>% select(-subcity_geo)) %>% 
+  select(iso2, subcity_geoid,  nbhd_geo = geo, nbhd_geoid = tract10, 
+         year, population_density_per_sq_km, parent)
   
 
 ## CCUH MS1
 df_nbhd_pop_dens = bind_rows(
   df_nbhd_pop_dens_salurbal,
   df_nbhd_pop_dens_usa
-)
+) %>% 
+  select(iso2, subcity_geoid, nbhd_geo, nbhd_geoid, 
+         year, population_density_per_sq_km, parent) %>% 
+  verify(!is.na(subcity_geoid))
 df_nbhd_pop_dens %>% write_parquet(context$df_nbhd_pop_dens)
+
+## Preview
+glimpse(df_nbhd_pop_dens)
 ```
 
 ## QC
@@ -405,7 +437,7 @@ Quick visual isnpections
 
 ```{r}
 df_nbhd_pop_dens %>% 
-  mutate(iso2_geo = glue::glue("{iso2} ({geo})")) %>% 
+  mutate(iso2_geo = glue::glue("{iso2} ({nbhd_geo})")) %>% 
   ggplot(aes(x = iso2_geo, y = population_density_per_sq_km)) +
   geom_boxplot(fill = "steelblue", alpha = 0.7) +
   theme_minimal() +

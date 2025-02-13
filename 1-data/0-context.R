@@ -18,6 +18,11 @@ context = lst(
  
 
 ## Crosswalks
+xwalk_tract10_dsphNbhd = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/xwalk_tract10_dsphNbhd__v1/xwalk_tract10_dsphNbhd__v1.parquet" |> 
+  arrow::open_dataset() %>% 
+  dplyr::collect() %>% 
+  select(tract10, subcity_geoid = nbhd_id) %>% 
+  mutate( subcity_geo = 'DSPH_NBHD')
 xwalk_l2 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/xwalk_l2_v1/xwalk_l2_v1.parquet" |> 
   arrow::open_dataset() |>
   dplyr::collect()
@@ -30,10 +35,4 @@ city_IDs <-  c(`Belo Horizonte` = 102136,
                `Guatemala City` = 203102,
                `Panama City`    = 206101)
 
-## Philadelphia Tracts of interest
-xwalk_tract10 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/xwalk_tract10_v1/xwalk_tract10_v1.parquet" |> 
-  arrow::read_parquet()
-vec__philadelphia_tracts = xwalk_tract10 %>% 
-  filter( metro.census.cbsa10.name == 'Philadelphia-Camden-Wilmington, PA-NJ-DE-MD Metropolitan Statistical Area',
-          state.abb == 'PA') %>% 
-  pull(tract10.census.geoid)
+ 
