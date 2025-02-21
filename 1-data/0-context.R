@@ -27,12 +27,10 @@ xwalk_l2 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-serve
   arrow::open_dataset() |>
   dplyr::collect()
 
-## SALURBAL Cities of interest
-city_IDs <-  c(`Belo Horizonte` = 102136,
-               `Rio de Janeiro` = 102190,
-               `Campinas`       = 102226,
-               `Sao Paulo`      = 102248,
-               `Guatemala City` = 203102,
-               `Panama City`    = 206101)
 
- 
+## Harmonization schema
+df_schema_aim2 = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/schema_ccuh_aim2_city_nbhd/schema_ccuh_aim2_city_nbhd.parquet" |> 
+  arrow::open_dataset() |>
+  dplyr::collect()
+
+df_schema_aim2  
