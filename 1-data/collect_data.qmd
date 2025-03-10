@@ -1,0 +1,90 @@
+---
+title: "Collect Data for CCUH Aim 2 Analysis"
+author: Derek Weix
+format: 
+  html:
+    theme: cosmo
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    code-fold: false
+    page-layout: full
+    embed-resources: true
+editor: source
+warning: false
+#cache: true
+cache.lazy: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| code-summary: "Libraries"
+
+library("tidyverse")
+library("arrow")
+```
+
+# CCUH Aim 2 Data Sets
+
+Below is code to retrieve the CCUH Aim 2 data from the CCUH database.
+
+## Mortality
+[CCUH Aim 2 Mortality Data Access](https://www.notion.so/drexel-ccuh/CCUH-Aim-2-Mortality-Harmonized-Datasets-1a457008e885803ca9e5cd2997558357)
+
+```{r}
+#| eval: false
+
+# Read data from data base
+df_aim2_schema = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/base__ccuh__aim2_city_subcity_nbhd__schema.parquet" %>% 
+  arrow::open_dataset() %>% 
+  collect()
+  
+df_aim2_mort =  "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/harmonized__ccuh_aim_2__death_records.parquet" |> 
+  arrow::open_dataset() 
+  
+df_aim2_nbhd_deaths =  "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/harmonized__ccuh_aim_2__nbhd_death_counts.parquet" |> 
+  arrow::open_dataset() 
+  
+df_aim2_nbhd_deaths_age =  "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/harmonized__ccuh_aim_2__nbhd_death_counts__age_grp_65.parquet" |> 
+  arrow::open_dataset() 
+```
+
+## Temperature
+
+[CCUH Aim 2 Temperature Data Acess](https://www.notion.so/drexel-ccuh/CCUH-Aim-2-City-level-Daily-Temperature-Harmonized-Datasets-harmonized__ccuh_aim_2__city_level_da-1a557008e885800e8b91eabd249d798c)
+
+```{r}
+#| eval: false
+
+# Read data from data base
+df_aim2_city_daily_temp = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/harmonized__ccuh_aim_2__city_level_daily_temperature.parquet" |> 
+   arrow::open_dataset()  |>
+   dplyr::collect()
+```
+
+# Fully Merged Data
+
+[Final Data Bundle](https://www.notion.so/drexel-ccuh/CCUH-MS1-Data-Bundle-v1-ms1__final_bundle__v1-1a857008e885806f84f1fa3166db8f42)
+
+```{r}
+#| eval: true 
+
+# Read data from data base
+df_schema =  "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/base__ccuh__aim2_city_subcity_nbhd__schema.parquet" |> 
+  arrow::open_dataset() |> 
+  dplyr::collect()
+  
+df_data = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle__v1.parquet" |> 
+  arrow::open_dataset() |> 
+  dplyr::collect()
+
+df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |> 
+  arrow::open_dataset() |>  
+  dplyr::collect()
+
+# Save data locally
+write_csv(df_data, "1-data/merged_data.csv")
+write_csv(df_data_age, "1-data/merged_data_by_age.csv")
+```
