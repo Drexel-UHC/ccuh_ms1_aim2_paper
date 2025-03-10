@@ -1,2 +1,4 @@
-1-data/1-exposure-datasets.html
-*.html
+1-data/*.html
+1-data/*.csv
+2-code/*.html
+.Rproj*
