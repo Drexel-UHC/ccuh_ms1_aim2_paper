@@ -1,0 +1,158 @@
+---
+title: "Exploratory Data Analysis for CCUH Aim 2 Paper"
+author: Derek Weix
+format: 
+  html:
+    theme: cosmo
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+editor: source
+warning: false
+#cache: true
+cache.lazy: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Set Up
+
+```{r}
+# Libraries
+library("tidyverse")
+library("gt")
+library("here")
+library("patchwork")
+library("lubridate")
+library("glue")
+library("dlnm"); library("gnm")
+
+# ggplot2 theming
+theme_set(theme_classic())
+theme_update(plot.title = element_text(hjust = 0.5),
+             plot.subtitle = element_text(hjust = 0.5),
+             strip.background = element_blank(),
+             strip.text = element_text(size = 12))
+```
+
+```{r}
+#| code-summary: "Read in the data."
+
+# Get base data
+df <- read_csv(here("1-data", "merged_data_by_age.csv")) |> 
+  filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
+
+# Data frame with only unique entries of modifiers
+df1 <- df |> 
+  select(!c(age_category, year, date, death, popwt_temp)) |> 
+  summarize(across(everything(), first), .by = nbhd_geoid)
+
+glimpse(df)
+glimpse(df1)
+```
+
+
+# Exploratory Data Analysis
+
+```{r}
+#| code-summary: "Create count table."
+
+df |> 
+  summarize(across(everything(), n_distinct), .by = city_name) |> 
+  select(-c(city_geoid, iso2)) |> 
+  gt() |> 
+  tab_header(title = "Unique Observations for Each City")
+```
+
+```{r}
+#| code-summary: "Histograms of variable values per day by city."
+#| fig-width: 12
+#| fig-height: 4
+
+make_histogram <- function(variable = "death") {
+  df |>  
+    slice_sample(n = 10000, by = c(age_category, city_name)) |> 
+    ggplot(aes(!!sym(variable), fill = age_category)) +
+    geom_histogram() +
+    scale_y_continuous(labels = \(x) {x/1000}) +
+    facet_grid(age_category ~ city_name) 
+}
+
+make_histogram("death")
+
+make_histogram("popwt_temp")
+
+make_histogram("pct_green")
+
+make_histogram("pct_primary")
+
+make_histogram("pop_density")
+
+```
+
+```{r}
+#| code-summary: "Bar chart."
+#| fig-width: 8
+#| fig-height: 4
+
+df |> 
+  summarize(death = sum(death), .by = age_category) |> 
+  ggplot(aes(age_category, death)) +
+  geom_col() +
+  labs(x = "Age Category", y = "Total Deaths", title = "Deaths by Age Category")
+```
+
+```{r}
+#| code-summary: "Correlation plots of modifiers."
+#| fig-width: 8
+#| fig-height: 6
+
+# Basic Pair Plots
+df1 |> 
+  select(pct_green, pct_primary, pop_density) |> 
+  GGally::ggpairs()
+
+# Pair Plots with Color by Country
+df1 |> 
+  GGally::ggpairs(columns = c("pct_green", "pct_primary", "pop_density"), 
+                  aes(color = iso2, alpha = .2))
+
+# Pair Plots with Color by City
+df1 |> 
+  GGally::ggpairs(columns = c("pct_green", "pct_primary", "pop_density"), 
+                  aes(color = city_name, alpha = .2))
+```
+
+```{r}
+#| code-summary: "Scatter plot of modifiers and death."
+#| fig-width: 8
+#| fig-height: 2
+
+# Association of Modifiers with Death
+df2 <- df |> drop_na()
+n_sample <- 10000
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(pct_green, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(pct_primary, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(pop_density, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(popwt_temp, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+```
