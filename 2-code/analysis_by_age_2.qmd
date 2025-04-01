@@ -1,0 +1,290 @@
+---
+title: "Temperature Mortality Curves of CCUH Cities by Age"
+subtitle: "with Neighborhood Level Modifiers"
+author: Derek Weix
+format: 
+  html:
+    theme: cosmo
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+editor: source
+warning: false
+#cache: true
+cache.lazy: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introduction
+
+This document details temperature mortality curves for the CCUH cities using neighborhood level modifiers.
+
+```{r}
+#| code-summary: "Libraries and plot theming."
+
+# Libraries
+library("tidyverse")
+library("patchwork")
+library("lubridate")
+library("glue")
+library("dlnm"); library("gnm")
+
+# ggplot2 theming
+theme_set(theme_classic())
+theme_update(plot.title = element_text(hjust = 0.5),
+             plot.subtitle = element_text(hjust = 0.5),
+             strip.background = element_blank(),
+             strip.text = element_text(size = 12))
+
+# Helper function for getting MMT
+get_cen <- function(crosspred) {
+  if(!is.null(crosspred$fit)) {
+    crosspred$predvar[which.min(crosspred$fit)]
+  } else if(!is.null(crosspred$allfit)) {
+    crosspred$predvar[which.min(crosspred$allfit)]
+  } else {
+    print("Unable to locate minimum.")
+  }
+}
+
+# Helper function for extracting reduced curve
+get_df_RRs <- function(pred) {
+  tibble(Temperature = pred$predvar,
+         RR = pred$RRfit,
+         RR_low = pred$RRlow,
+         RR_high = pred$RRhigh)
+}
+```
+
+```{r}
+#| code-summary: "Read in the data."
+
+# Read a locally saved version
+df <- read_csv("../1-data/merged_data_by_age.csv")
+
+# Read directly from the database
+# df_data_age <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |> 
+#   arrow::open_dataset() |>  
+#   dplyr::collect()
+
+glimpse(df)
+```
+
+# Analysis
+
+The first step in our analysis is to add a `strata` variable (age-category:nbhd:year:month:day-of-week) for use in fitting a conditional quasi-Poisson DLNM.
+
+```{r}
+#| code-summary: "Prepare data for analysis."
+
+# We add a strata column to fit a conditional model
+# We add a group column to ensure our cross-basis is correctly calculated
+# We add the under_65 and over_65 to facilitate easy manipulation of which group
+# is the "reference group" in our interaction DLNM models.
+df <- df |> 
+  mutate(strata = paste(nbhd_geoid, age_category,
+                        year(date), month(date), wday(date, label = TRUE),
+                        sep = ":"),
+         under_65 = ifelse(age_category == "<65", 1, 0),
+         over_65 = ifelse(age_category == "65+", 1, 0),
+         group = paste(nbhd_geoid, age_category, sep = ":"),
+         across(c(age_category, nbhd_geoid, strata, group), factor))
+
+# Cities of interest
+city_names <- unique(df$city_name)
+
+# Countries of interest
+country_names <- unique(df$iso2)
+```
+
+## Curves by City
+
+```{r}
+#| code-summary: "City-level analysis pooled at the nbhd-level."
+
+# Model
+model_by_city <-
+  map(city_names, \(ID) {
+    
+    # Aggregated TS
+    df0 <- df |>
+      filter(city_name == ID, !is.na(popwt_temp)) |> # SENSITIVITY ANALYSIS, death > 0) 
+      mutate(across(c(strata, group), droplevels))
+    
+    # Specify knots placement
+    var_knots <- quantile(df0$popwt_temp, c(.1, .75, .9), na.rm = TRUE)
+    lag_knots <- logknots(21, nk = 5)
+    
+    # Specify cross-basis
+    cbt <- crossbasis(df0$popwt_temp, lag = 21,
+                      argvar = list(fun = "ns", knots = var_knots),
+                      arglag = list(fun = "ns", knots = lag_knots),
+                      group = df0$group)
+    
+    # Specify interaction terms
+    cb_age1 <- cbt * df0$under_65
+    cb_age2 <- cbt * df0$over_65
+    
+    # Fit city-specific model
+    model <- gnm(death ~ cbt,
+                 family = quasipoisson(),
+                 #offset = log(POP),
+                 eliminate = strata,
+                 data = df0)
+    
+    model_age1 <- update(model, . ~ . + cb_age2) # Reference group under_65
+    model_age2 <- update(model, . ~ . + cb_age1) # Reference group over_65
+    
+    # Get exposure response curve/surface by city
+    # pred_age1 <- crossreduce(cbt, model_age1, cen = median(df0$popwt_temp))
+    # pred_age2 <- crossreduce(cbt, model_age2, cen = median(df0$popwt_temp))
+    
+    list(pred_age1 = crossreduce(cbt, model_age1, cen = quantile(df0$popwt_temp, .75)),
+         pred_age2 = crossreduce(cbt, model_age2, cen = quantile(df0$popwt_temp, .75)))
+    
+  })
+
+# Values for plotting
+min_temp <- min(df$popwt_temp)
+max_temp <- max(df$popwt_temp)
+
+min_RR <- min(map_dbl(model_by_city, \(x) min(c(x$pred_age1$RRlow, x$pred_age2$RRlow))))
+max_RR
+
+# Create list of plots
+plot_by_city <-
+  map2(model_by_city, city_names, \(pred_list, name_l1) {
+    # Data frame for plotting RRs
+    df_plot <- bind_rows(under_65 = get_df_RRs(pred_list$pred_age1),
+                         over_65 = get_df_RRs(pred_list$pred_age2),
+                         .id = "age")
+    
+    df0 <- df |>
+      filter(salid1 == city_IDs[name_l1], !is.na(temp_pw))
+    
+    # Plot curve and histogram of observed temperatures by city
+    p_curve <- df_plot |>
+      ggplot(aes(x = Temperature)) +
+      geom_ribbon(aes(ymin = RR_low, ymax = RR_high, fill = age), alpha = .2) +
+      geom_line(aes(y = RR, color = age)) +
+      geom_hline(yintercept = 1) +
+      scale_color_viridis_d() +
+      scale_fill_viridis_d() +
+      scale_y_continuous(transform = "log", labels = \(x) round(x, 2)) + # c(0.85, 1.8)
+      labs(title = glue("{name_l1}"))
+
+    p_hist <- df0 |>
+      ggplot(aes(temp_pw)) +
+      geom_histogram(alpha = .2, bins = 35) +
+      labs(title = "Observed Temperatures",
+           x = "Temperature",
+           y = "Count (in 1000s)") +
+      scale_y_continuous(labels = \(x) {x/1000})
+
+    p_curve / p_hist
+  })
+```
+
+
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves."
+
+wrap_plots(plot_by_city, guides = "collect")
+```
+
+## Full model
+
+```{r}
+#| code-summary: "Fitting of all models."
+
+# Model
+model_by_city <-
+  map(city_names, \(ID) {
+    
+    # Aggregated TS
+    df0 <- df |>
+      filter(city_name == ID, !is.na(popwt_temp)) |> # SENSITIVITY ANALYSIS, death > 0) 
+      mutate(across(c(strata, group), droplevels))
+    
+    # Specify knots placement
+    var_knots <- quantile(df0$popwt_temp, c(.1, .75, .9), na.rm = TRUE)
+    lag_knots <- logknots(21, nk = 5)
+    
+    # Specify cross-basis
+    cbt <- crossbasis(df0$popwt_temp, lag = 21,
+                      argvar = list(fun = "ns", knots = var_knots),
+                      arglag = list(fun = "ns", knots = lag_knots),
+                      group = df0$group)
+    
+    # Specify interaction terms
+    cb_age1 <- cbt * df0$under_65
+    cb_age2 <- cbt * df0$over_65
+    
+    # Fit city-specific model
+    model <- gnm(death ~ cbt,
+                 family = quasipoisson(),
+                 #offset = log(POP),
+                 eliminate = strata,
+                 data = df0)
+    
+    model_age1 <- update(model, . ~ . + cb_age2) # Reference group under_65
+    model_age2 <- update(model, . ~ . + cb_age1) # Reference group over_65
+    
+    model_age1_low
+    model_age2_high
+    
+    # Get exposure response curve/surface by city
+    # pred_age1 <- crossreduce(cbt, model_age1, cen = median(df0$popwt_temp))
+    # pred_age2 <- crossreduce(cbt, model_age2, cen = median(df0$popwt_temp))
+    
+    list(pred_age1 = crossreduce(cbt, model_age1, cen = quantile(df0$popwt_temp, .75)),
+         pred_age2 = crossreduce(cbt, model_age2, cen = quantile(df0$popwt_temp, .75)))
+    
+    
+    
+  })
+
+interaction_model_by_city_age <- function(variable) { 
+  map(df_l1_age, \(df0) {
+    # Specify knots placement
+    var_knots <- quantile(df0$temp_pw, c(.1, .75, .9), na.rm = TRUE)
+    lag_knots <- logknots(21, nk = 5)
+    
+    # Specify cross-basis
+    cbt <- crossbasis(df0$temp_pw, lag = 21,
+                      argvar = list(fun = "ns", knots = var_knots),
+                      arglag = list(fun = "ns", knots = lag_knots),
+                      group = droplevels(df0$salid2))
+    
+    # Fit city-specific model
+    model <- gnm(death ~ cbt,
+                 family = quasipoisson(),
+                 #offset = log(POP),
+                 eliminate = strata,
+                 data = df0)
+    
+    # Interaction CBs Greenspace
+    intval <- quantile(df0[[variable]], c(.1, .9))
+    cb_int1 <- cbt * (df0[[variable]] - intval[1])
+    cb_int2 <- cbt * (df0[[variable]] - intval[2])
+    
+    # Fit interaction models
+    model_int1 <- update(model, . ~ . + cb_int1)
+    model_int2 <- update(model, . ~ . + cb_int2)
+    
+    # Predication
+    pred_int1 <- crossreduce(cbt, model_int1, cen = median(df0$temp_pw))
+    pred_int2 <- crossreduce(cbt, model_int2, cen = median(df0$temp_pw))
+    
+    list(pred_int1 = crossreduce(cbt, model_int2, cen = get_cen(pred_int1)),
+         pred_int2 = crossreduce(cbt, model_int2, cen = get_cen(pred_int2)))
+    
+  })}
+```
