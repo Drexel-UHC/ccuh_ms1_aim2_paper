@@ -85,6 +85,6 @@ df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-se
   dplyr::collect()
 
 # Save data locally
-write_csv(df_data, "1-data/merged_data.csv")
-write_csv(df_data_age, "1-data/merged_data_by_age.csv")
+write_csv(df_data, "merged_data.csv")
+write_csv(df_data_age, "merged_data_by_age.csv")
 ```
