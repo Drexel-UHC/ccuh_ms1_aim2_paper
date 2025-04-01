@@ -1,0 +1,202 @@
+---
+title: "Spatial Plots of CCUH City Variables"
+author: Derek Weix
+brand: false
+format: 
+  html:
+    theme: cosmo
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+editor: source
+warning: false
+#cache: true
+cache.lazy: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introduction
+
+This document displays the spatial plots of a variety of variables for each of the 5 CCUH cities.
+
+```{r}
+#| code-summary: "Libraries and theming."
+
+# Spatial Libraries
+library("arrow")
+library("geoarrow")
+library("sf")
+library("leaflet")
+
+# General Libraries
+library("tidyverse")
+library("here")
+library("patchwork")
+library("lubridate")
+library("glue")
+
+# ggplot2 theming
+theme_set(theme_classic())
+theme_update(plot.title = element_text(hjust = 0.5),
+             plot.subtitle = element_text(hjust = 0.5),
+             strip.background = element_blank(),
+             strip.text = element_text(size = 12),
+             axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+```
+
+## Neighborhood Level Variables
+```{r}
+#| code-summary: "Read in neighborhood level variables."
+
+# Colored Shape Plots -----------------------------------------------------
+df <- read_csv(here("1-data", "merged_data_by_age.csv"))
+
+df_nbhd_meta <- df |> 
+  filter(!(city_name %in% c("Belo Horizonte", "Campinas"))) |>
+  summarize(across(c(city_name, iso2, pct_green, pct_primary, pop_density), first),
+            nbhd_death = sum(death),
+            `nbhd_death_<65` = sum(death * (age_category == "<65")), 
+            `nbhd_death_65+` = sum(death * (age_category == "65+")), .by = nbhd_geoid) |> 
+  mutate(nbhd_death_ratio = `nbhd_death_65+`/`nbhd_death_<65`,
+         log_pop_density = log(pop_density),
+         log_nbhd_death = log(nbhd_death))
+
+# Cities of interest
+city_names <- unique(df$city_name)
+
+# Countries of interest
+country_names <- unique(df$iso2)
+```
+
+## Spatial Boundaries
+```{r}
+#| code-summary: "Read in spatial boundaries."
+
+
+# Pennsylvania ------------------------------------------------------------
+phl_sf <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze//schema_ccuh_phl_metro_nbhd/schema_ccuh_phl_metro_nbhd__nad83.parquet" %>%
+  arrow::open_dataset() %>% 
+  sf::st_as_sf()
+
+# SALURBAL Cities ---------------------------------------------------------
+
+# Connect to API
+df_salurbal_nbhd <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_boundaries__v1/salurbal_boundaries_v1.parquet" %>% 
+  arrow::open_dataset() |> 
+  sf::st_as_sf()
+
+# Create city specific sf object
+rio_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "102190"), geo == "l2_5") |> mutate(nbhd_geoid = geoid, city_name = "Rio de Janiero")
+sao_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "102248"), geo == "l2_5") |> mutate(nbhd_geoid = geoid, city_name = "Sao Paulo")
+gua_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "203102"), geo == "l2")   |> mutate(nbhd_geoid = geoid, city_name = "Guatemala City")
+pan_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "206101"), geo == "l2")   |> mutate(nbhd_geoid = geoid, city_name = "Panama City")
+
+```
+
+```{r}
+#| code-summary: "Spatial boundary plots."
+#| fig-width: 12
+#| fig-height: 8
+
+basic_plots <- list(
+  phl_sf |> ggplot() + geom_sf() + labs(title = "Philadelphia PA Metro"), 
+  rio_sf |> ggplot() + geom_sf() + labs(title = "Rio de Janiero"),
+  sao_sf |> ggplot() + geom_sf() + labs(title = "Sao Paulo"),
+  gua_sf |> ggplot() + geom_sf() + labs(title = "Guatemala City"),
+  pan_sf |> ggplot() + geom_sf() + labs(title = "Panama City")
+)
+
+wrap_plots(basic_plots)
+```
+
+# Spatial Plots
+```{r}
+#| code-summary: "Generate spatial plots."
+
+spatial_plot <- function(sf, variable) {
+  fill_range <- range(df_nbhd_meta[[variable]])
+  city_name <- sf$city_name
+  
+  sf |> 
+    left_join(df_nbhd_meta, by = "nbhd_geoid") |> 
+    ggplot(aes(fill = !!sym(variable))) +
+    geom_sf() +
+    scale_fill_viridis_c(limits = fill_range) +
+    labs(title = city_name)
+}
+
+create_plots <- function(variable) {
+  spatial_plot(phl_sf, variable) + 
+    spatial_plot(rio_sf, variable) + 
+    spatial_plot(sao_sf, variable) + 
+    spatial_plot(gua_sf, variable) + 
+    spatial_plot(pan_sf, variable) +
+    plot_layout(guides = "collect") 
+}
+```
+
+## Percent Greenspace
+```{r}
+#| code-summary: "Percent Greenspace"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("pct_green")   & labs(fill = "Greenspace %")
+```
+
+## Percent of Population that Finish Primary School
+```{r}
+#| code-summary: "Percent Primary"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("pct_primary") & labs(fill = "Completed Primary\nEducation %")
+
+```
+
+## Population Density
+```{r}
+#| code-summary: "Population Density"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("pop_density") & labs(fill = "Population\nDensity")
+```
+
+```{r}
+#| code-summary: "log(Population Density)"
+#| fig-width: 12
+#| fig-height: 8
+#| 
+create_plots("log_pop_density") & labs(fill = "Population\nDensity (log)")
+```
+
+## Total Deaths
+```{r}
+#| code-summary: "Total Deaths"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("nbhd_death") & labs(fill = "Total Deaths")
+```
+
+```{r}
+#| code-summary: "log(Total Deaths)"
+#| fig-width: 12
+#| fig-height: 8
+create_plots("log_nbhd_death") & labs(fill = "Total Deaths (log)")
+```
+
+```{r}
+#| code-summary: "Ratio of Death 65 and over versus 64 and under"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("nbhd_death_ratio") & labs(fill = "Deaths 65+\nover\nDeath 0-64")
+```
+
