@@ -110,9 +110,9 @@ df <- read_csv(here("1-data", "merged_data_by_age.csv"))
 glimpse(df)
 ```
 
-# Preliminary Model Fitting
+# No Modifiers
 
-The first step in our analysis is to add a `strata` variable (age-category:nbhd:year:month:day-of-week) for use in fitting a conditional quasi-Poisson DLNM.
+The first step in our analysis is to add a `strata` variable (age-category:nbhd:year:month:day-of-week) for use in fitting a conditional quasi-Poisson DLNM. In the following models, we estimate the temperature-mortality curve at a predicted tenth and ninetieth percentile for each age-category and city.
 
 ```{r}
 #| code-summary: "Prepare data for analysis."
@@ -249,7 +249,7 @@ plot_by_city <-
 wrap_plots(plot_by_city, guides = "collect")
 ```
 
-## Curves by City and Age
+# Continuous Modifiers
 
 ```{r}
 #| code-summary: "Analysis by city and neighborhood level modifier."
@@ -332,20 +332,20 @@ interaction_model_by_city_age <- readRDS("interaction_analysis_lag_dim_3_knots.r
 min_temp <- min(df$popwt_temp, na.rm = TRUE)
 max_temp <- max(df$popwt_temp, na.rm = TRUE)
 
-min_RR_int <- min(map_dbl(interaction_model_by_city_age, 
-                          \(x) min(c(x$pred_grn1$RRlow, x$pred_grn2$RRlow,
-                                     x$pred_edu1$RRlow, x$pred_edu2$RRlow,
-                                     x$pred_pdn1$RRlow, x$pred_pdn2$RRlow))))
-max_RR_int <- max(map_dbl(interaction_model_by_city_age, 
-                          \(x) max(c(x$pred_grn1$RRhigh, x$pred_grn2$RRhigh,
-                                     x$pred_edu1$RRhigh, x$pred_edu2$RRhigh,
-                                     x$pred_pdn1$RRhigh, x$pred_pdn2$RRhigh))))
+# min_RR_int <- min(map_dbl(interaction_model_by_city_age, 
+#                           \(x) min(c(x$pred_grn1$RRlow, x$pred_grn2$RRlow,
+#                                      x$pred_edu1$RRlow, x$pred_edu2$RRlow,
+#                                      x$pred_pdn1$RRlow, x$pred_pdn2$RRlow))))
+# max_RR_int <- max(map_dbl(interaction_model_by_city_age, 
+#                           \(x) max(c(x$pred_grn1$RRhigh, x$pred_grn2$RRhigh,
+#                                      x$pred_edu1$RRhigh, x$pred_edu2$RRhigh,
+#                                      x$pred_pdn1$RRhigh, x$pred_pdn2$RRhigh))))
 
 
 # Plotting function
-plot_interaction_model <- function(ID, variable) {
-  list_under_65 <- interaction_model_by_city_age[[paste(ID, "<65", sep = ":")]]
-  list_over_65  <- interaction_model_by_city_age[[paste(ID, "65+", sep = ":")]]
+plot_interaction_model <- function(ID, variable, model_list) {
+  list_under_65 <- model_list[[paste(ID, "<65", sep = ":")]]
+  list_over_65  <- model_list[[paste(ID, "65+", sep = ":")]]
     
   if(variable == "Greenspace") {
     # Data frame for plotting RRs
@@ -357,6 +357,10 @@ plot_interaction_model <- function(ID, variable) {
       mutate(category = as.factor(paste(category, variable)),
              age = as.factor(str_sub(category, 1, 3)),
              type = as.factor(str_sub(category, 5)))
+    
+    # Color direction
+    color_direction <- 1
+    
   } else if(variable == "Education") {
     # Data frame for plotting RRs
     df_plot <- bind_rows(`<65 Low` = get_df_RRs(list_under_65$pred_edu1),
@@ -367,6 +371,10 @@ plot_interaction_model <- function(ID, variable) {
       mutate(category = as.factor(paste(category, variable)),
              age = as.factor(str_sub(category, 1, 3)),
              type = as.factor(str_sub(category, 5)))
+    
+    # Color direction
+    color_direction <- 1
+    
   } else if(variable == "Pop Density") {
     # Data frame for plotting RRs
     df_plot <- bind_rows(`<65 Low` = get_df_RRs(list_under_65$pred_pdn1),
@@ -377,7 +385,14 @@ plot_interaction_model <- function(ID, variable) {
       mutate(category = as.factor(paste(category, variable)),
              age = as.factor(str_sub(category, 1, 3)),
              type = as.factor(str_sub(category, 5)))
+    
+    # Color direction
+    color_direction <- -1
   }
+  
+  # Get y-axis limits
+  min_RR_int <- min(df_plot$RR_low)
+  max_RR_int <- max(df_plot$RR_high)
   
   # Data for temperature histogram
   df0 <- df |>
@@ -389,9 +404,9 @@ plot_interaction_model <- function(ID, variable) {
       geom_ribbon(aes(ymin = RR_low, ymax = RR_high, fill = type), alpha = .2) +
       geom_line(aes(y = RR, color = type)) +
       geom_hline(yintercept = 1) +
-      scale_color_viridis_d() +
-      scale_fill_viridis_d() +
-      scale_y_continuous(#limits = c(min_RR_int, max_RR_int),
+      scale_color_viridis_d(direction = color_direction) +
+      scale_fill_viridis_d(direction = color_direction) +
+      scale_y_continuous(limits = c(min_RR_int, max_RR_int),
                          transform = "log", labels = \(x) round(x, 2)) + 
       scale_x_continuous(#limits = c(min_temp, max_temp)
                          ) +
@@ -421,7 +436,7 @@ plot_interaction_model <- function(ID, variable) {
 #model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
 
 plot_by_city_greenspace <-
-  map(city_names, \(ID) plot_interaction_model(ID, "Greenspace"))
+  map(city_names, \(ID) plot_interaction_model(ID, "Greenspace", interaction_model_by_city_age))
 
 wrap_plots(plot_by_city_greenspace, guides = "collect", nrow = 3)
 
@@ -436,7 +451,7 @@ wrap_plots(plot_by_city_greenspace, guides = "collect", nrow = 3)
 #model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
 
 plot_by_city_education <-
-  map(city_names, \(ID) plot_interaction_model(ID, "Education"))
+  map(city_names, \(ID) plot_interaction_model(ID, "Education", interaction_model_by_city_age))
 
 wrap_plots(plot_by_city_education, guides = "collect", nrow = 3)
 
@@ -451,17 +466,15 @@ wrap_plots(plot_by_city_education, guides = "collect", nrow = 3)
 #model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
 
 plot_by_city_popdens <-
-  map(city_names, \(ID) plot_interaction_model(ID, "Pop Density"))
+  map(city_names, \(ID) plot_interaction_model(ID, "Pop Density", interaction_model_by_city_age))
 
 wrap_plots(plot_by_city_popdens, guides = "collect", nrow = 3)
 
 ```
 
-
-# Full Model
-
 ```{r}
 #| code-summary: "Fit model with all modifiers at once to control for confouding."
+#| echo: false
 
 # full_interaction_model_by_city_age <-
 #   map(df_city_age[1:2], \(df0) {
@@ -521,3 +534,515 @@ wrap_plots(plot_by_city_popdens, guides = "collect", nrow = 3)
 # saveRDS(full_interaction_model_by_city_age, "full_interaction_model_by_city_age_linear.rds")
 ```
 
+# Discrete Modifiers
+
+Now we estimate the temperature-mortality curve for discretion modifiers. We try classifying neighborhood as being high or low (above or below the median) and high, medium, low (in tertiles). For these models we separate cases above and below 65 and model them separately.
+
+```{r}
+#| code-summary: "Fit model with high and low modifiers"
+
+
+# Should cutoff be city-specific? Or using a general median percent green
+
+# df <- df |> 
+#   mutate(strata = paste(nbhd_geoid,
+#                         year(date), month(date), wday(date, label = TRUE),
+#                         sep = ":"),
+#          
+#          pct_green_level = ifelse(pct_green > med_pct_green, "low", "high"),
+#          pct_green_low = ifelse(pct_green <= med_pct_green, 0, 1),
+#          pct_green_high = ifelse(pct_green > med_pct_green, 0, 1),
+#          strata_green = paste(pct_green_level, strata, sep = ":"),
+#          group_green = paste(pct_green_level, nbhd_geoid, sep = ":"),
+#          
+#          pct_primary_level = ifelse(pct_primary > med_pct_primary, "low", "high"),
+#          pct_primary_low = ifelse(pct_primary <= med_pct_primary, 0, 1),
+#          pct_primary_high = ifelse(pct_primary > med_pct_primary, 0, 1),
+#          strata_primary = paste(pct_primary_level, strata, sep = ":"),
+#          group_green = paste(pct_primary_level, nbhd_geoid, sep = ":"),
+#          
+#          pop_dens_level = ifelse(pop_density > med_pop_dens, "low", "high"),
+#          pop_dens_low = ifelse(pop_density <= med_pop_dens, 0, 1),
+#          pop_dens_high = ifelse(pop_density > med_pop_dens, 0, 1),
+#          strata_pop_dens = paste(pct_green_level, strata, sep = ":"),
+#          group_pop_dens = paste(pct_green_level, nbhd_geoid, sep = ":"),
+#          across(matches("strata|level|group"), factor))
+# 
+
+
+# med_pct_green   <- median(df$pct_green)
+# med_pct_primary <- median(df$pct_primary)
+# med_pop_dens    <- median(df$pop_density)
+
+# discrete_interaction_model_by_city_age <-
+#   map(df_city_age, \(df0) {
+#     
+#     med_pct_green   <- median(df0$pct_green)
+#     med_pct_primary <- median(df0$pct_primary)
+#     med_pop_dens    <- median(df0$pop_density)
+# 
+#     # Format dataframe for interaction models
+#     df0 <- df0 |>
+#       mutate(strata = paste(nbhd_geoid,
+#                             year(date), month(date), wday(date, label = TRUE),
+#                             sep = ":"),
+#              group = paste(nbhd_geoid, sep = ":"),
+# 
+#              pct_green_level = ifelse(pct_green > med_pct_green, "low", "high"),
+#              pct_green_low = ifelse(pct_green <= med_pct_green, 1, 0),
+#              pct_green_high = ifelse(pct_green > med_pct_green, 1, 0),
+#              strata_green = paste(pct_green_level, strata, sep = ":"),
+#              group_green = paste(nbhd_geoid, sep = ":"),
+# 
+#              pct_primary_level = ifelse(pct_primary > med_pct_primary, "low", "high"),
+#              pct_primary_low = ifelse(pct_primary <= med_pct_primary, 1, 0),
+#              pct_primary_high = ifelse(pct_primary > med_pct_primary, 1, 0),
+#              strata_primary = paste(pct_primary_level, strata, sep = ":"),
+#              group_green = paste(nbhd_geoid, sep = ":"),
+# 
+#              pop_dens_level = ifelse(pop_density > med_pop_dens, "low", "high"),
+#              pop_dens_low = ifelse(pop_density <= med_pop_dens, 1, 0),
+#              pop_dens_high = ifelse(pop_density > med_pop_dens, 1, 0),
+#              strata_pop_dens = paste(pct_green_level, strata, sep = ":"),
+#              group_pop_dens = paste(nbhd_geoid, sep = ":"),
+#              across(matches("strata|level|group"), factor))
+# 
+#     # Specify knots placement
+#     var_knots <- quantile(df0$popwt_temp, c(.1, .75, .9), na.rm = TRUE)
+#     lag_knots <- logknots(21, nk = 3)
+# 
+#     # Specify cross-basis
+#     cbt <- crossbasis(df0$popwt_temp, lag = 21,
+#                       argvar = list(fun = "ns", knots = var_knots),
+#                       arglag = list(fun = "ns", knots = lag_knots),
+#                       group = df0$group)
+#     # Fit Initial Model
+#     model <- gnm(death ~ cbt,
+#                  family = quasipoisson(),
+#                  eliminate = strata,
+#                  data = df0)
+# 
+#     # Interaction: greenspace
+#     # cbt_green <- crossbasis(df0$popwt_temp, lag = 21,
+#     #                         argvar = list(fun = "ns", knots = var_knots),
+#     #                         arglag = list(fun = "ns", knots = lag_knots),
+#     #                         group = df0$group_green)
+# 
+#     # model <- gnm(death ~ cbt,
+#     #              family = quasipoisson(),
+#     #              eliminate = strata_green,
+#     #              data = df0)
+# 
+# 
+#     cb_grn1 <- cbt * df0$pct_green_low
+#     cb_grn2 <- cbt * df0$pct_green_high
+# 
+#     model_grn1 <- update(model, . ~ . + cb_grn2) # Reference group: low
+#     model_grn2 <- update(model, . ~ . + cb_grn1) # Reference group: high
+# 
+#     # Interaction: education
+#     # cbt_primary <- crossbasis(df0$popwt_temp, lag = 21,
+#     #                           argvar = list(fun = "ns", knots = var_knots),
+#     #                           arglag = list(fun = "ns", knots = lag_knots),
+#     #                           group = df0$group_primary)
+# 
+#     # model <- gnm(death ~ cbt,
+#     #              family = quasipoisson(),
+#     #              eliminate = strata_primary,
+#     #              data = df0)
+# 
+# 
+#     cb_edu1 <- cbt * df0$pct_primary_low
+#     cb_edu2 <- cbt * df0$pct_primary_high
+# 
+#     model_edu1 <- update(model, . ~ . + cb_edu2) # Reference group: low
+#     model_edu2 <- update(model, . ~ . + cb_edu1) # Reference group: high
+# 
+#     # Interaction: pop density
+#     # cbt_pop_dens <- crossbasis(df0$popwt_temp, lag = 21,
+#     #                            argvar = list(fun = "ns", knots = var_knots),
+#     #                            arglag = list(fun = "ns", knots = lag_knots),
+#     #                            group = df0$group_pop_dens)
+# 
+#     # model <- gnm(death ~ cbt,
+#     #              family = quasipoisson(),
+#     #              eliminate = strata_pop_dens,
+#     #              data = df0)
+# 
+# 
+#     cb_pdn1 <- cbt * df0$pop_dens_low
+#     cb_pdn2 <- cbt * df0$pop_dens_high
+# 
+#     model_pdn1 <- update(model, . ~ . + cb_pdn2) # Reference group: low
+#     model_pdn2 <- update(model, . ~ . + cb_pdn1) # Reference group: high
+# 
+#     # Predication
+#     temp_75 <- quantile(df0$popwt_temp, .75, na.rm = TRUE)
+# 
+#     pred_list <-
+#       list(pred_grn1 = crossreduce(cbt, model_grn1, cen = temp_75),
+#            pred_grn2 = crossreduce(cbt, model_grn2, cen = temp_75),
+#            pred_edu1 = crossreduce(cbt, model_edu1, cen = temp_75),
+#            pred_edu2 = crossreduce(cbt, model_edu2, cen = temp_75),
+#            pred_pdn1 = crossreduce(cbt, model_pdn1, cen = temp_75),
+#            pred_pdn2 = crossreduce(cbt, model_pdn2, cen = temp_75))
+# 
+#     pred_list
+# 
+#     # list(pred_grn1 = crossreduce(cbt, model_grn1, cen = get_cen(pred_list$pred_grn1)),
+#     #      pred_grn2 = crossreduce(cbt, model_grn2, cen = get_cen(pred_list$pred_grn2)),
+#     #      pred_edu1 = crossreduce(cbt, model_edu1, cen = get_cen(pred_list$pred_edu1)),
+#     #      pred_edu2 = crossreduce(cbt, model_edu2, cen = get_cen(pred_list$pred_edu2)),
+#     #      pred_pdn1 = crossreduce(cbt, model_pdn1, cen = get_cen(pred_list$pred_pdn1)),
+#     #      pred_pdn2 = crossreduce(cbt, model_pdn2, cen = get_cen(pred_list$pred_pdn2)))
+# 
+#   }, .progress = TRUE)
+# 
+# saveRDS(discrete_interaction_model_by_city_age, "discrete_interaction_model_by_city_age_city_specific_median.rds")
+discrete_interaction_model_by_city_age <- readRDS("discrete_interaction_model_by_city_age_city_specific_median.rds")
+
+
+```
+
+## Curves by City and Greenspace
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves with greenspace modifier."
+
+#model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
+
+plot_by_city_greenspace_discrete <-
+  map(city_names, \(ID) plot_interaction_model(ID, "Greenspace", discrete_interaction_model_by_city_age))
+
+wrap_plots(plot_by_city_greenspace_discrete, guides = "collect", nrow = 3)
+
+```
+
+## Curves by City and Education
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves with educational attainment modifier."
+
+#model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
+
+plot_by_city_education_discrete <-
+  map(city_names, \(ID) plot_interaction_model(ID, "Education", discrete_interaction_model_by_city_age))
+
+wrap_plots(plot_by_city_education_discrete, guides = "collect", nrow = 3)
+
+```
+
+## Curves by City and Population Density
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves with population density modifier."
+
+#model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
+
+plot_by_city_popdens_discrete <-
+  map(city_names, \(ID) plot_interaction_model(ID, "Pop Density", discrete_interaction_model_by_city_age))
+
+wrap_plots(plot_by_city_popdens_discrete, guides = "collect", nrow = 3)
+
+```
+
+# Tertile Modifiers
+
+```{r}
+#| code-summary: "Fit model with high, medium, low modifiers"
+
+
+# med_pct_green   <- median(df$pct_green)
+# med_pct_primary <- median(df$pct_primary)
+# med_pop_dens    <- median(df$pop_density)
+
+# tertile_interaction_model_by_city_age <-
+#   map(df_city_age, \(df0) {
+#     
+#     tri_pct_green   <- quantile(df0$pct_green,   c(1/3, 2/3))
+#     tri_pct_primary <- quantile(df0$pct_primary, c(1/3, 2/3))
+#     tri_pop_dens    <- quantile(df0$pop_density, c(1/3, 2/3))
+# 
+#     # Format dataframe for interaction models
+#     df0 <- df0 |>
+#       mutate(strata = paste(nbhd_geoid,
+#                             year(date), month(date), wday(date, label = TRUE),
+#                             sep = ":"),
+#              group = paste(nbhd_geoid, sep = ":"),
+# 
+#              pct_green_level = case_when(pct_green <= tri_pct_green[1] ~ "low",
+#                                          between(pct_green, 
+#                                                  tri_pct_green[1], 
+#                                                  tri_pct_green[2])     ~ "medium",
+#                                          pct_green >= tri_pct_green[2] ~ "high"),
+#              pct_green_low = ifelse(pct_green <= tri_pct_green[1], 1, 0),
+#              pct_green_med = ifelse(between(pct_green, 
+#                                                  tri_pct_green[1], 
+#                                                  tri_pct_green[2]), 1, 0),
+#              pct_green_high = ifelse(pct_green > tri_pct_green[2], 1, 0),
+# 
+#              pct_primary_level = case_when(pct_primary <= tri_pct_primary[1] ~ "low",
+#                                            between(pct_primary,
+#                                                    tri_pct_primary[1],
+#                                                    tri_pct_primary[2])       ~ "medium",
+#                                            pct_primary >= tri_pct_primary[2] ~ "high"),
+#              pct_primary_low = ifelse(pct_primary <= tri_pct_primary[1], 1, 0),
+#              pct_primary_med = ifelse(between(pct_primary, 
+#                                                  tri_pct_primary[1], 
+#                                                  tri_pct_primary[2]), 1, 0),
+#              pct_primary_high = ifelse(pct_primary > tri_pct_primary[2], 1, 0),
+# 
+#              pop_dens_level = case_when(pop_density <= tri_pop_dens[1] ~ "low",
+#                                         between(pop_density,
+#                                                 tri_pop_dens[1],
+#                                                 tri_pop_dens[2])       ~ "medium",
+#                                         pop_density >= tri_pop_dens[2] ~ "high"),
+#              pop_dens_low = ifelse(pop_density <= tri_pop_dens[1], 1, 0),
+#              pop_dens_med = ifelse(between(pop_density, 
+#                                            tri_pop_dens[1], 
+#                                            tri_pop_dens[2]), 1, 0),
+#              pop_dens_high = ifelse(pop_density > tri_pop_dens[2], 1, 0),
+#              across(matches("strata|level|group"), factor))
+# 
+#     # Specify knots placement
+#     var_knots <- quantile(df0$popwt_temp, c(.1, .75, .9), na.rm = TRUE)
+#     lag_knots <- logknots(21, nk = 3)
+# 
+#     # Specify cross-basis
+#     cbt <- crossbasis(df0$popwt_temp, lag = 21,
+#                       argvar = list(fun = "ns", knots = var_knots),
+#                       arglag = list(fun = "ns", knots = lag_knots),
+#                       group = df0$group)
+#     # Fit Initial Model
+#     model <- gnm(death ~ cbt,
+#                  family = quasipoisson(),
+#                  eliminate = strata,
+#                  data = df0)
+# 
+#     # Interaction: greenspace
+#     # cbt_green <- crossbasis(df0$popwt_temp, lag = 21,
+#     #                         argvar = list(fun = "ns", knots = var_knots),
+#     #                         arglag = list(fun = "ns", knots = lag_knots),
+#     #                         group = df0$group_green)
+# 
+#     # model <- gnm(death ~ cbt,
+#     #              family = quasipoisson(),
+#     #              eliminate = strata_green,
+#     #              data = df0)
+# 
+# 
+#     cb_grn1 <- cbt * df0$pct_green_low
+#     cb_grn2 <- cbt * df0$pct_green_med
+#     cb_grn3 <- cbt * df0$pct_green_high
+# 
+#     model_grn1 <- update(model, . ~ . + cb_grn2 + cb_grn3) # Reference group: low
+#     model_grn2 <- update(model, . ~ . + cb_grn1 + cb_grn3) # Reference group: med
+#     model_grn3 <- update(model, . ~ . + cb_grn1 + cb_grn2) # Reference group: high
+# 
+#     # Interaction: education
+#     # cbt_primary <- crossbasis(df0$popwt_temp, lag = 21,
+#     #                           argvar = list(fun = "ns", knots = var_knots),
+#     #                           arglag = list(fun = "ns", knots = lag_knots),
+#     #                           group = df0$group_primary)
+# 
+#     # model <- gnm(death ~ cbt,
+#     #              family = quasipoisson(),
+#     #              eliminate = strata_primary,
+#     #              data = df0)
+# 
+# 
+#     cb_edu1 <- cbt * df0$pct_primary_low
+#     cb_edu2 <- cbt * df0$pct_primary_med
+#     cb_edu3 <- cbt * df0$pct_primary_high
+# 
+#     model_edu1 <- update(model, . ~ . + cb_edu2 + cb_edu3) # Reference group: low
+#     model_edu2 <- update(model, . ~ . + cb_edu1 + cb_edu3) # Reference group: med
+#     model_edu3 <- update(model, . ~ . + cb_edu1 + cb_edu2) # Reference group: high
+# 
+#     # Interaction: pop density
+#     # cbt_pop_dens <- crossbasis(df0$popwt_temp, lag = 21,
+#     #                            argvar = list(fun = "ns", knots = var_knots),
+#     #                            arglag = list(fun = "ns", knots = lag_knots),
+#     #                            group = df0$group_pop_dens)
+# 
+#     # model <- gnm(death ~ cbt,
+#     #              family = quasipoisson(),
+#     #              eliminate = strata_pop_dens,
+#     #              data = df0)
+# 
+# 
+#     cb_pdn1 <- cbt * df0$pop_dens_low
+#     cb_pdn2 <- cbt * df0$pop_dens_med
+#     cb_pdn3 <- cbt * df0$pop_dens_high
+# 
+#     model_pdn1 <- update(model, . ~ . + cb_pdn2 + cb_pdn3) # Reference group: low
+#     model_pdn2 <- update(model, . ~ . + cb_pdn1 + cb_pdn3) # Reference group: med
+#     model_pdn3 <- update(model, . ~ . + cb_pdn1 + cb_pdn2) # Reference group: high
+# 
+#     # Predication
+#     temp_75 <- quantile(df0$popwt_temp, .75, na.rm = TRUE)
+# 
+#     pred_list <-
+#       list(pred_grn1 = crossreduce(cbt, model_grn1, cen = temp_75),
+#            pred_grn2 = crossreduce(cbt, model_grn2, cen = temp_75),
+#            pred_grn3 = crossreduce(cbt, model_grn3, cen = temp_75),
+#            pred_edu1 = crossreduce(cbt, model_edu1, cen = temp_75),
+#            pred_edu2 = crossreduce(cbt, model_edu2, cen = temp_75),
+#            pred_edu3 = crossreduce(cbt, model_edu3, cen = temp_75),
+#            pred_pdn1 = crossreduce(cbt, model_pdn1, cen = temp_75),
+#            pred_pdn2 = crossreduce(cbt, model_pdn2, cen = temp_75),
+#            pred_pdn3 = crossreduce(cbt, model_pdn3, cen = temp_75))
+# 
+#     pred_list
+# 
+#     # list(pred_grn1 = crossreduce(cbt, model_grn1, cen = get_cen(pred_list$pred_grn1)),
+#     #      pred_grn2 = crossreduce(cbt, model_grn2, cen = get_cen(pred_list$pred_grn2)),
+#     #      pred_edu1 = crossreduce(cbt, model_edu1, cen = get_cen(pred_list$pred_edu1)),
+#     #      pred_edu2 = crossreduce(cbt, model_edu2, cen = get_cen(pred_list$pred_edu2)),
+#     #      pred_pdn1 = crossreduce(cbt, model_pdn1, cen = get_cen(pred_list$pred_pdn1)),
+#     #      pred_pdn2 = crossreduce(cbt, model_pdn2, cen = get_cen(pred_list$pred_pdn2)))
+# 
+#   }, .progress = TRUE)
+# 
+# saveRDS(tertile_interaction_model_by_city_age, "tertile_interaction_model_by_city_age.rds")
+tertile_interaction_model_by_city_age <- readRDS("tertile_interaction_model_by_city_age.rds")
+
+
+```
+
+```{r}
+# Plotting function
+plot_tertile_model <- function(ID, variable) {
+  list_under_65 <- tertile_interaction_model_by_city_age[[paste(ID, "<65", sep = ":")]]
+  list_over_65  <- tertile_interaction_model_by_city_age[[paste(ID, "65+", sep = ":")]]
+    
+  if(variable == "Greenspace") {
+    # Data frame for plotting RRs
+    df_plot <- bind_rows(`<65 Low` = get_df_RRs(list_under_65$pred_grn1),
+                         `<65 Med` = get_df_RRs(list_under_65$pred_grn2),
+                         `<65 High`= get_df_RRs(list_under_65$pred_grn3),
+                         `65+ Low` = get_df_RRs(list_over_65$pred_grn1),
+                         `65+ Med` = get_df_RRs(list_over_65$pred_grn2),
+                         `65+ High`= get_df_RRs(list_over_65$pred_grn3),
+                         .id = "category") |> 
+      mutate(category = as.factor(paste(category, variable)),
+             age = as.factor(str_sub(category, 1, 3)),
+             type = factor(str_sub(category, 5),
+                           levels = paste(c("Low", "Med", "High"), variable)))
+    color_direction <- 1
+    
+  } else if(variable == "Education") {
+    # Data frame for plotting RRs
+    df_plot <- bind_rows(`<65 Low` = get_df_RRs(list_under_65$pred_edu1),
+                         `<65 Med` = get_df_RRs(list_under_65$pred_edu2),
+                         `<65 High`= get_df_RRs(list_under_65$pred_edu3),
+                         `65+ Low` = get_df_RRs(list_over_65$pred_edu1),
+                         `65+ Med`= get_df_RRs(list_over_65$pred_edu2),
+                         `65+ High`= get_df_RRs(list_over_65$pred_edu3),
+                         .id = "category") |> 
+      mutate(category = as.factor(paste(category, variable)),
+             age = as.factor(str_sub(category, 1, 3)),
+             type = factor(str_sub(category, 5),
+                           levels = paste(c("Low", "Med", "High"), variable)))
+    
+    color_direction <- 1
+  } else if(variable == "Pop Density") {
+    # Data frame for plotting RRs
+    df_plot <- bind_rows(`<65 Low` = get_df_RRs(list_under_65$pred_pdn1),
+                         `<65 Med`= get_df_RRs(list_under_65$pred_pdn2),
+                         `<65 High`= get_df_RRs(list_under_65$pred_pdn3),
+                         `65+ Low` = get_df_RRs(list_over_65$pred_pdn1),
+                         `65+ Med`= get_df_RRs(list_over_65$pred_pdn2),
+                         `65+ High`= get_df_RRs(list_over_65$pred_pdn3),
+                         .id = "category") |> 
+      mutate(category = as.factor(paste(category, variable)),
+             age = as.factor(str_sub(category, 1, 3)),
+             type = factor(str_sub(category, 5),
+                           levels = paste(c("Low", "Med", "High"), variable)))
+    
+    color_direction <- -1
+  }
+  
+  # Get y-axis limits
+  min_RR_int <- min(df_plot$RR_low)
+  max_RR_int <- max(df_plot$RR_high)
+  
+  # Data for temperature histogram
+  df0 <- df |>
+      filter(city_name == ID, !is.na(popwt_temp))
+  
+  # Plot curve and histogram of observed temperatures by city
+    p_curve <- df_plot |>
+      ggplot(aes(x = Temperature)) +
+      geom_ribbon(aes(ymin = RR_low, ymax = RR_high, fill = type), alpha = .2) +
+      geom_line(aes(y = RR, color = type)) +
+      geom_hline(yintercept = 1) +
+      scale_color_viridis_d(direction = color_direction) +
+      scale_fill_viridis_d(direction = color_direction) +
+      scale_y_continuous(limits = c(min_RR_int, max_RR_int),
+                         transform = "log", labels = \(x) round(x, 2)) + 
+      scale_x_continuous(#limits = c(min_temp, max_temp)
+                         ) +
+      labs(title = glue("{ID}"), color = "", fill = "") +
+      facet_wrap(~ age, scale = "free")
+
+    # p_hist <- df0 |>
+    #   ggplot(aes(temp_pw)) +
+    #   geom_histogram(alpha = .2, bins = 35) +
+    #   labs(title = "Observed Temperatures",
+    #        x = "Temperature",
+    #        y = "Count (in 1000s)") +
+    #   scale_y_continuous(labels = \(x) {x/1000})
+
+    p_curve# / p_hist
+  
+}
+```
+
+## Curves by City and Greenspace
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves with greenspace modifier."
+
+#model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
+
+plot_by_city_greenspace_tertile <-
+  map(city_names, \(ID) plot_tertile_model(ID, "Greenspace"))
+
+wrap_plots(plot_by_city_greenspace_tertile, guides = "collect", nrow = 3)
+
+```
+
+## Curves by City and Education
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves with educational attainment modifier."
+
+#model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
+
+plot_by_city_education_tertile <-
+  map(city_names, \(ID) plot_tertile_model(ID, "Education"))
+
+wrap_plots(plot_by_city_education_tertile, guides = "collect", nrow = 3)
+
+```
+
+## Curves by City and Population Density
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot of of city-level exposure-response curves with population density modifier."
+
+#model_by_city_greenspace <- interaction_model_by_city_age("pct_green")
+
+plot_by_city_popdens_tertile <-
+  map(city_names, \(ID) plot_tertile_model(ID, "Pop Density"))
+
+wrap_plots(plot_by_city_popdens_tertile, guides = "collect", nrow = 3)
+
+```

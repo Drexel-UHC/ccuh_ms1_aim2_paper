@@ -118,7 +118,7 @@ wrap_plots(basic_plots)
 ```{r}
 #| code-summary: "Generate spatial plots."
 
-spatial_plot <- function(sf, variable) {
+spatial_plot <- function(sf, variable, color_direction = 1) {
   fill_range <- range(df_nbhd_meta[[variable]])
   city_name <- sf$city_name
   
@@ -126,16 +126,16 @@ spatial_plot <- function(sf, variable) {
     left_join(df_nbhd_meta, by = "nbhd_geoid") |> 
     ggplot(aes(fill = !!sym(variable))) +
     geom_sf() +
-    scale_fill_viridis_c(limits = fill_range) +
+    scale_fill_viridis_c(limits = fill_range, direction = color_direction) +
     labs(title = city_name)
 }
 
-create_plots <- function(variable) {
-  spatial_plot(phl_sf, variable) + 
-    spatial_plot(rio_sf, variable) + 
-    spatial_plot(sao_sf, variable) + 
-    spatial_plot(gua_sf, variable) + 
-    spatial_plot(pan_sf, variable) +
+create_plots <- function(variable, color_direction = 1) {
+  spatial_plot(phl_sf, variable, color_direction) + 
+    spatial_plot(rio_sf, variable, color_direction) + 
+    spatial_plot(sao_sf, variable, color_direction) + 
+    spatial_plot(gua_sf, variable, color_direction) + 
+    spatial_plot(pan_sf, variable, color_direction) +
     plot_layout(guides = "collect") 
 }
 ```
@@ -165,7 +165,7 @@ create_plots("pct_primary") & labs(fill = "Completed Primary\nEducation %")
 #| fig-width: 12
 #| fig-height: 8
 
-create_plots("pop_density") & labs(fill = "Population\nDensity")
+create_plots("pop_density", color_direction = -1) & labs(fill = "Population\nDensity")
 ```
 
 ```{r}
@@ -173,7 +173,7 @@ create_plots("pop_density") & labs(fill = "Population\nDensity")
 #| fig-width: 12
 #| fig-height: 8
 #| 
-create_plots("log_pop_density") & labs(fill = "Population\nDensity (log)")
+create_plots("log_pop_density", color_direction = -1) & labs(fill = "Population\nDensity (log)")
 ```
 
 ## Total Deaths
