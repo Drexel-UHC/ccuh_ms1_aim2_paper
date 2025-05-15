@@ -24,6 +24,8 @@ editor_options:
 
 library("tidyverse")
 library("arrow")
+library("geoarrow")
+library("sf")
 ```
 
 # CCUH Aim 2 Data Sets
@@ -88,3 +90,40 @@ df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-se
 write_csv(df_data, "merged_data.csv")
 write_csv(df_data_age, "merged_data_by_age.csv")
 ```
+
+# New Bundle 4/11/2025
+
+```{r}
+## Harmonized Schema
+df_schema =  "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/base__ccuh__aim2_city_subcity_nbhd__schema.parquet" |> 
+  arrow::open_dataset() |> 
+  dplyr::collect()
+
+sf_aim2_city = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/schema_ccuh_aim2_city_nbhd/sf_city__schema_ccuh_aim2_city_nbhd.parquet" %>% 
+  arrow::open_dataset() %>% 
+  sf::st_as_sf() 
+
+sf_aim2_nbhd = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/schema_ccuh_aim2_city_nbhd/sf_nbhd__schema_ccuh_aim2_city_nbhd.parquet" %>% 
+  arrow::open_dataset() %>% 
+  sf::st_as_sf() 
+  
+## Daily Data
+df_data = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle__v1.parquet" |> 
+  arrow::open_dataset() |> 
+  dplyr::collect()
+
+df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |> 
+  arrow::open_dataset() |>  
+  dplyr::collect()
+  
+  ## Cross-sectional nbhd exposure data centered around
+df_aim2_exposures = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/harmonized__ccuh_aim_2__nbhd_exposures__v1.parquet" |> 
+	 arrow::open_dataset()  |>
+	 dplyr::collect()
+
+## Longitudinal nbhd-level age stratified populationa counts
+df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/harmonized__ccuh_aim_2__nbhd_pop_age_5_yr_counts__v1.parquet' |> 
+  arrow::open_dataset() |> 
+  dplyr::collect()
+```
+
