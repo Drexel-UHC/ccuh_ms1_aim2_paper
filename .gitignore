@@ -1,5 +1,9 @@
 1-data/*.html
 1-data/*.csv
+1-data/*.rds
 2-code/*.html
 2-code/*.rds
+2-code/*.docx
+*.html
+*.docx
 .Rproj*
