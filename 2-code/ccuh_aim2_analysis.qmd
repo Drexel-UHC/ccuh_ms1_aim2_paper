@@ -60,12 +60,12 @@ Our data come from the [final data bundle](https://drexelccuh.quarto.pub/ms1__fi
 
 These data are aggregated at for each age category, neighborhood, year, month, and day. Note that our definition of neighborhood changes for different countries. In Brazil it is L2.5, in Guatemala and Panama it is L2, and in Philadelphia it is the DSPH PHL neighborhood definition for within Philadelphia proper and a CCUH modified neighborhood definition for the surrounding suburbs ([see documentation here](https://drexelccuh.quarto.pub/schema_ccuh_phl_metro_nbhd/)). 
 
-For each row, we have the number of deaths, the population weighted temperature, the percent greenspace for that neighborhood, the percent of the population that completed primary school, and the population density.
+For each row, we have the number of deaths for a date:neighborhood:age-category grouping, the city level population weighted temperature, and the neighborhood level the green-space percentage, population that completed primary school in Latin America or college in United States percentage, and the population density.
 
-The variables saved in:
+The variables in our initial data-frame are:
 
 - **age_category**: Identifies if deaths in row are for people <65 or 65+.
-- **nbhd_geoid**: The neighborhood identifier used in analysis that has been harmonized across all countires.
+- **nbhd_geoid**: The neighborhood identifier used in analysis that has been harmonized across all countries.
 - **year**: The year of the cases.
 - **date**: Date of the cases.
 - **death**: Number of deaths for a given neighborhood, date, and age range.
@@ -118,6 +118,9 @@ list_df <-
     mutate(x, across(c(age_category, nbhd_geoid, strata, group), factor))
   })
 
+# Save list of data frames
+# saveRDS(list_df, here("1-data", "list_city_df.rds"))
+
 # Cities of interest
 city_names <- names(list_df)
 
@@ -149,13 +152,18 @@ model_by_city <-
                  #offset = log(POP),
                  eliminate = strata,
                  data = df0)
+    
+    # Specify prediction space
+    pred_at <- seq(min(df0$popwt_temp), max(df0$popwt_temp), length.out = 100)
 
     # Get exposure response curve/surface by city
     pred_list <- list(pred = crossreduce(cbt,
                                          model,
+                                         at = pred_at,
                                          cen = quantile(df0$popwt_temp, .75)))
-
-    list(pred = crossreduce(cbt, model, cen = get_MMT(pred_list$pred)))
+    
+    #pred_list
+    list(pred = crossreduce(cbt, model, at = pred_at, cen = get_MMT(pred_list$pred)))
 
   })
 
@@ -225,7 +233,7 @@ wrap_plots(plot_by_city, guides = "collect")
 
 # Discrete Modifiers
 
-Now we estimate the temperature-mortality curve for discretion modifiers. We try classifying neighborhood as being high or low (above or below the median) and high, medium, low (in tertiles). For these models we separate cases above and below 65 and model them separately.
+Now we estimate the temperature-mortality curve for discrete, neighborhood-level modifiers. We classify neighborhoods as being high or low (above or below the median). Individual-level modifiers are included in the definition of the strata, and so are accounted for indirectly.
 
 ```{r}
 #| code-summary: "Fit model with high and low modifiers"
@@ -322,6 +330,26 @@ saveRDS(interaction_model_by_city, "interaction_model_by_city.rds")
 ```{r}
 #| code-summary: "Plotting function for interaction terms."
 
+# Read in interaction model
+interaction_model_by_city <- readRDS("interaction_model_by_city.rds")
+
+# Get y-axis limits
+min_RR_int <- interaction_model_by_city |> 
+    map(\(city) {
+      city |> 
+        map(\(pred) {
+          min(pred$RRlow)
+        })
+    }) |> unlist() |> min()
+
+max_RR_int <- interaction_model_by_city |> 
+    map(\(city) {
+      city |> 
+        map(\(pred) {
+          max(pred$RRhigh)
+        })
+    }) |> unlist() |> max()
+
 # Plotting function
 plot_interaction_model <- function(ID, variable, model_list) {
   city_pred <- model_list[[ID]]
@@ -360,8 +388,8 @@ plot_interaction_model <- function(ID, variable, model_list) {
     mutate(category = as.factor(paste(category, variable)))
   
   # Get y-axis limits
-  min_RR_int <- min(df_plot$RR_low)
-  max_RR_int <- max(df_plot$RR_high)
+  # min_RR_int <- min(df_plot$RR_low)
+  # max_RR_int <- max(df_plot$RR_high)
   
   # Data for temperature histogram
   # df0 <- df |>
@@ -400,9 +428,6 @@ plot_interaction_model <- function(ID, variable, model_list) {
 #| fig-height: 8
 #| code-summary: "Plot of of city-level exposure-response curves with greenspace modifier."
 
-# Read in interaction model
-interaction_model_by_city <- readRDS("interaction_model_by_city.rds")
-
 plot_by_city_greenspace_discrete <-
   map(city_names, \(ID) plot_interaction_model(ID, "Greenspace", interaction_model_by_city))
 
@@ -438,11 +463,13 @@ wrap_plots(plot_by_city_popdens_discrete, guides = "collect", nrow = 3)
 
 # Multiple Interaction Models
 
+Because the value of the neighborhood level modifiers does not vary within our strata we cannot estimate a main effect for them. Therefore, to account for multiple modifiers at once, we instead include multiple interaction cross-bases. Using eight models, we get all possible combinations of the "low" and "high" neighborhood levels of green-space, education, and population density. For clarity, we initially plot only the presumed best case scenario (high green-space and education, but low population density) and worse case scenario (low green-space, education, but high population density). We also include plots with predicted exposure-response functions for all eight models.
+
 ```{r}
-#| code-summary: "Fit model with high and low modifiers for multiple combinations at once."
+#| code-summary: "Fit model with high and low modifiers for all possible combinations."
 #| eval: false
 
-# Should cutoff be city-specific? Or using a general median percent green
+# General median percent green
 
 # med_pct_green   <- median(df$pct_green)
 # med_pct_primary <- median(df$pct_primary)
@@ -525,8 +552,38 @@ saveRDS(multi_interaction_model_by_city, "multi_interaction_model_by_city.rds")
 ```{r}
 #| code-summary: "Plotting function for multiple interaction terms."
 
+# Read in models
+multi_interaction_model_by_city <- readRDS("multi_interaction_model_by_city.rds")
+
+# Name of each model
+var_levels <- c("High Green, Edu, Pop Dens",
+                "High Green, Edu/Low Pop Dens",
+                "High Green, Pop Dens/Low Edu",
+                "High Green/Low Edu, Pop Dens",
+                "Low Green/High Edu, Pop Dens",
+                "Low Green, Edu/High Pop Dens",
+                "Low Green, Pop Dens/High Edu",
+                "Low Green, Edu, Pop Dens")
+
+# Get y-axis limits
+min_RR_multi <- multi_interaction_model_by_city |> 
+    map(\(city) {
+      city |> 
+        map(\(pred) {
+          min(pred$RRlow)
+        })
+    }) |> unlist() |> min()
+
+max_RR_multi <- multi_interaction_model_by_city |> 
+    map(\(city) {
+      city |> 
+        map(\(pred) {
+          max(pred$RRhigh)
+        })
+    }) |> unlist() |> max()
+
 # Plotting function
-plot_multi_interaction_model <- function(ID, model_list) {
+plot_multi_interaction_model <- function(ID, model_list, var_list = var_levels) {
   city_pred <- model_list[[ID]]
   
   df_plot <- bind_rows(`Low Green, Edu, Pop Dens`     = get_df_RRs(city_pred$pred_1),
@@ -541,18 +598,12 @@ plot_multi_interaction_model <- function(ID, model_list) {
   
   df_plot <- df_plot |> 
     rename(Temperature = exposure) |> 
-    mutate(category = factor(category, levels = c("High Green, Edu, Pop Dens",
-                                                  "High Green, Edu/Low Pop Dens",
-                                                  "High Green, Pop Dens/Low Edu",
-                                                  "High Green/Low Edu, Pop Dens",
-                                                  "Low Green/High Edu, Pop Dens",
-                                                  "Low Green, Edu/High Pop Dens",
-                                                  "Low Green, Pop Dens/High Edu",
-                                                  "Low Green, Edu, Pop Dens" )))
+    mutate(category = factor(category, levels = var_levels)) |> 
+    filter(category %in% var_list)
   
   # Get y-axis limits
-  min_RR_int <- min(df_plot$RR_low)
-  max_RR_int <- max(df_plot$RR_high)
+  # min_RR_multi <- min(df_plot$RR_low)
+  # max_RR_multi <- max(df_plot$RR_high)
   
   # Data for temperature histogram
   # df0 <- df |>
@@ -566,8 +617,8 @@ plot_multi_interaction_model <- function(ID, model_list) {
       geom_hline(yintercept = 1) +
       scale_color_viridis_d() +
       scale_fill_viridis_d() +
-      scale_y_continuous(limits = c(min_RR_int, max_RR_int),
-                         transform = "log", labels = \(x) round(x, 2)) + 
+      scale_y_continuous(limits = c(min_RR_multi, max_RR_multi),
+                         transform = "log2", labels = \(x) round(x, 2)) + 
       scale_x_continuous(#limits = c(min_temp, max_temp)
                          ) +
       labs(title = glue("{ID}"), color = "", fill = "")
@@ -587,13 +638,26 @@ plot_multi_interaction_model <- function(ID, model_list) {
 
 ```{r}
 #| code-summary: "Plot multiple interaction terms by city"
+#| fig-width: 12
+#| fig-height: 8
 
-multi_interaction_model_by_city <- readRDS("multi_interaction_model_by_city.rds")
+multi_interaction_plots <- map(city_names, \(x) {
+  plot_multi_interaction_model(x, multi_interaction_model_by_city, var_list = var_levels[c(6, 2)])
+})
+
+wrap_plots(multi_interaction_plots, guides = "collect", nrow = 3)
+
+```
+
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| code-summary: "Plot multiple interaction terms by city"
 
 multi_interaction_plots <- map(city_names, \(x) {
   plot_multi_interaction_model(x, multi_interaction_model_by_city)
 })
 
-wrap_plots(mult_interaction_plots)
+wrap_plots(multi_interaction_plots, guides = "collect", nrow = 3)
 
 ```
