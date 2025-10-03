@@ -84,9 +84,9 @@ The variables in our initial data-frame are:
 df <- read_csv(here("1-data", "merged_data_by_age1.csv"))
 
 # Read directly from the database
-# df_data_age <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |> 
-#   arrow::open_dataset() |>  
-#   dplyr::collect()
+df_data_age <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |>
+  arrow::open_dataset() |>
+  dplyr::collect()
 
 glimpse(df)
 ```

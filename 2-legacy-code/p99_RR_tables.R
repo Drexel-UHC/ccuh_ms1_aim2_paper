@@ -114,6 +114,7 @@ var_levels <- c(
   model_8 = "High Green, Edu, Pop Dens"
 )
 
+# Make predictions
 df_multi_interaction_model_by_city <-  
   map(list_df, \(df0) {
     # # Define city-specific median points
@@ -191,22 +192,28 @@ df_multi_interaction_model_by_city <-
         p99_v_MMT <- crossreduce(cbt, model, at = p99, cen = get_MMT(pred_for_MMT))
         p99_v_p75 <- crossreduce(cbt, model, at = p99, cen = p75)
         
-        # Returned df
-        tibble(prediction = c("center", "lower", "upper"),
-               p99_v_MMT = c(p99_v_MMT$RRfit, p99_v_MMT$RRlow, p99_v_MMT$RRhigh),
-               p99_v_p75 = c(p99_v_p75$RRfit, p99_v_p75$RRlow, p99_v_p75$RRhigh))
+        # Returned df (RRs)
+        # tibble(prediction = c("center", "lower", "upper"),
+        #        p99_v_MMT = c(p99_v_MMT$RRfit, p99_v_MMT$RRlow, p99_v_MMT$RRhigh),
+        #        p99_v_p75 = c(p99_v_p75$RRfit, p99_v_p75$RRlow, p99_v_p75$RRhigh))
+        
+        # Returned df 
+        tibble(prediction = c("fit", "se"),
+               p99_v_MMT = c(p99_v_MMT$fit, p99_v_MMT$se),
+               p99_v_p75 = c(p99_v_p75$fit, p99_v_p75$se))
       }) |> list_rbind(names_to = "reference_group")
     
     df_RR_p99
     
   }, .progress = TRUE) |> list_rbind(names_to = "city_name")
 
+# Save predictions
+saveRDS(df_multi_interaction_model_by_city, "RR_p99_multi_interaction_fit.rds")
 
-saveRDS(df_multi_interaction_model_by_city, "RR_p99_multi_interaction.rds")
-
+# Load predictions
 df_multi_interaction_model_by_city <- readRDS("RR_p99_multi_interaction.rds")
 
-# Create table
+# Create dataframe for table
 df_tbl <- df_multi_interaction_model_by_city |> 
   pivot_wider(values_from = c(p99_v_MMT, p99_v_p75), 
               names_from = prediction, names_sep = "_") |> 
@@ -221,6 +228,7 @@ df_tbl <- df_multi_interaction_model_by_city |>
   arrange(center) |> 
   select(c(center, reference_group, everything()))
   
+# Create gt object
 tbl_multi_interaction <- df_tbl |> 
     group_by(center) |> 
     gt() |> 
@@ -238,9 +246,43 @@ tbl_multi_interaction <- df_tbl |>
     tab_style(style = cell_borders(sides = "right"),
               locations = cells_body(columns = "reference_group"))
 
+# Save table
 saveRDS(tbl_multi_interaction, "2-code/p99_RR_by_city_multi_interaction.rds")
 gtsave(tbl_multi_interaction, "2-code/p99_RR_by_city_multi_interaction.html")
 
+# Find difference in RRs by change from "best to worst" by nieghborhood modifier
+# Load predictions
+df_mi_fit <- readRDS("RR_p99_multi_interaction_fit.rds")
+
+# Helper function
+RR_diff_est <- function(fit1, fit2, se1, se2) {
+  glue("{RR} ({lower}, {upper})",
+       RR = round(exp(fit1 - fit2), 3),
+       lower = round(exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)), 3),
+       upper = round(exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)), 3))
+}
+
+# Difference in RRs table
+tbl_multi_interaction_RR_diffs <- df_mi_fit |> 
+  pivot_wider(values_from = c(p99_v_MMT, p99_v_p75),
+              names_from = c(reference_group, prediction), names_sep = "_") |> 
+  mutate(city_name = city_name,
+         greenspace_p99_v_MMT = RR_diff_est(p99_v_MMT_model_2_fit, p99_v_MMT_model_6_fit, p99_v_MMT_model_2_se, p99_v_MMT_model_6_se),#"{exp(p99_v_MMT_model_2_fit - p99_v_MMT_model_6_fit)} {sqrt(p99_v_MMT_model_2_se^2 + p99_v_MMT_model_6_se^2)}"),
+         education_p99_v_MMT  = RR_diff_est(p99_v_MMT_model_2_fit, p99_v_MMT_model_4_fit, p99_v_MMT_model_2_se, p99_v_MMT_model_4_se),
+         popdens_p99_v_MMT    = RR_diff_est(p99_v_MMT_model_2_fit, p99_v_MMT_model_1_fit, p99_v_MMT_model_2_se, p99_v_MMT_model_1_se), 
+         greenspace_p99_v_p75 = RR_diff_est(p99_v_p75_model_2_fit, p99_v_p75_model_6_fit, p99_v_p75_model_2_se, p99_v_p75_model_6_se),
+         education_p99_v_p75  = RR_diff_est(p99_v_p75_model_2_fit, p99_v_p75_model_4_fit, p99_v_p75_model_2_se, p99_v_p75_model_4_se),
+         popdens_p99_v_p75    = RR_diff_est(p99_v_p75_model_2_fit, p99_v_p75_model_1_fit, p99_v_p75_model_2_se, p99_v_p75_model_1_se), .keep = "none") |> 
+  gt(rowname_col = "city_name") |> 
+  tab_header(title = "Ratio of risk ratios at the 99th percentile temperature",
+             subtitle = "Comparison of baseline scenario with individual variable changes") |> 
+  tab_spanner(label = "Centered at MMT", columns = ends_with("MMT")) |> 
+  tab_spanner(label = "Centered at P75", columns = ends_with("p75")) |> 
+  cols_label(starts_with("greenspace") ~ "Greenspace",
+             starts_with("education") ~ "Education",
+             starts_with("popdens") ~ "Pop Density")
+
+saveRDS(tbl_multi_interaction_RR_diffs, "2-code/p99_RR_by_city_multi_interaction_RR_diffs.rds")
 
 # Predictions with rotating reference group (no pop dens) -----------------
 
@@ -278,13 +320,19 @@ df_multi_interaction_model_by_city2 <-
     cb_edu1 <- cbt * df0$pct_educated_low
     cb_edu2 <- cbt * df0$pct_educated_high
     
-    # Model: all combinations of green, edu, and pop dens
+    # Interaction: greenspace & education
+    cb_int1 <- cbt * df0$pct_green_high * df0$pct_educated_high
+    cb_int2 <- cbt * df0$pct_green_high * df0$pct_educated_low
+    cb_int3 <- cbt * df0$pct_green_low * df0$pct_educated_high
+    cb_int4 <- cbt * df0$pct_green_low * df0$pct_educated_low
+    
+    # Model: all combinations of green, edu
     list_models <-
       list(
-        model_1 = update(model, . ~ . + cb_grn2 + cb_edu2), # Reference group: low green, edu
-        model_2 = update(model, . ~ . + cb_grn2 + cb_edu1), # Reference group: low green, high edu
-        model_3 = update(model, . ~ . + cb_grn1 + cb_edu2), # Reference group: high green, low edu
-        model_4 = update(model, . ~ . + cb_grn1 + cb_edu1)  # Reference group: high green, edu
+        model_1 = update(model, . ~ . + cb_grn2 + cb_edu2 + cb_int1), # Reference group: low green, edu
+        model_2 = update(model, . ~ . + cb_grn2 + cb_edu1 + cb_int2), # Reference group: low green, high edu
+        model_3 = update(model, . ~ . + cb_grn1 + cb_edu2 + cb_int3), # Reference group: high green, low edu
+        model_4 = update(model, . ~ . + cb_grn1 + cb_edu1 + cb_int4)  # Reference group: high green, edu
       )
     
     # Fine predictions to get MMT
@@ -308,9 +356,14 @@ df_multi_interaction_model_by_city2 <-
         p99_v_p75 <- crossreduce(cbt, model, at = p99, cen = p75)
         
         # Returned df
-        tibble(prediction = c("center", "lower", "upper"),
-               p99_v_MMT = c(p99_v_MMT$RRfit, p99_v_MMT$RRlow, p99_v_MMT$RRhigh),
-               p99_v_p75 = c(p99_v_p75$RRfit, p99_v_p75$RRlow, p99_v_p75$RRhigh))
+        # tibble(prediction = c("center", "lower", "upper"),
+        #        p99_v_MMT = c(p99_v_MMT$RRfit, p99_v_MMT$RRlow, p99_v_MMT$RRhigh),
+        #        p99_v_p75 = c(p99_v_p75$RRfit, p99_v_p75$RRlow, p99_v_p75$RRhigh))
+        
+        # Returned df 
+        tibble(prediction = c("fit", "se"),
+               p99_v_MMT = c(p99_v_MMT$fit, p99_v_MMT$se),
+               p99_v_p75 = c(p99_v_p75$fit, p99_v_p75$se))
       }) |> list_rbind(names_to = "reference_group")
     
     df_RR_p99
@@ -318,7 +371,7 @@ df_multi_interaction_model_by_city2 <-
   }, .progress = TRUE) |> list_rbind(names_to = "city_name")
 
 
-saveRDS(df_multi_interaction_model_by_city2, "RR_p99_multi_interaction2.rds")
+saveRDS(df_multi_interaction_model_by_city2, "RR_p99_multi_interaction2_fit.rds")
 
 df_multi_interaction_model_by_city2 <- readRDS("RR_p99_multi_interaction2.rds")
 
@@ -357,7 +410,106 @@ tbl_multi_interaction2 <- df_tbl2 |>
 saveRDS(tbl_multi_interaction2, "p99_RR_by_city_multi_interaction2.rds")
 gtsave(tbl_multi_interaction2, "p99_RR_by_city_multi_interaction2.html")
 
+# Find difference in RRs by change from "best to worst" by nieghborhood modifier
+# Load predictions
+df_mi_fit2 <- readRDS("RR_p99_multi_interaction2_fit.rds")
 
+# Helper function
+RR_ratio_est <- function(fit1, fit2, se1, se2) {
+  glue("{RR} ({lower}, {upper})",
+       RR = round(exp(fit1 - fit2), 3),
+       lower = round(exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)), 3),
+       upper = round(exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)), 3))
+}
+
+RR_diff_est <- function(fit1, fit2) {
+  glue("{RR}", RR = round(exp(fit1) - exp(fit2), 3))
+}
+
+# Difference in RRs table (baseline: worst case)
+tbl_multi_interaction_RR_diffs2 <- df_mi_fit2 |> 
+  pivot_wider(values_from = c(p99_v_MMT, p99_v_p75),
+              names_from = c(reference_group, prediction), names_sep = "_") |> 
+  mutate(city_name = city_name,
+         greenspace_p99_v_MMT = RR_ratio_est(p99_v_MMT_model_1_fit, p99_v_MMT_model_3_fit, p99_v_MMT_model_1_se, p99_v_MMT_model_3_se),#"{exp(p99_v_MMT_model_2_fit - p99_v_MMT_model_6_fit)} {sqrt(p99_v_MMT_model_2_se^2 + p99_v_MMT_model_6_se^2)}"),
+         education_p99_v_MMT  = RR_ratio_est(p99_v_MMT_model_1_fit, p99_v_MMT_model_2_fit, p99_v_MMT_model_1_se, p99_v_MMT_model_2_se),
+         greenspace_p99_v_p75 = RR_ratio_est(p99_v_p75_model_1_fit, p99_v_p75_model_3_fit, p99_v_p75_model_1_se, p99_v_p75_model_3_se),
+         education_p99_v_p75  = RR_ratio_est(p99_v_p75_model_1_fit, p99_v_p75_model_2_fit, p99_v_p75_model_1_se, p99_v_p75_model_2_se), .keep = "none") |> 
+  gt(rowname_col = "city_name") |> 
+  tab_header(title = "Ratio of risk ratios at the 99th percentile temperature",
+             subtitle = "Comparison of worst case scenario with individual variable changes") |> 
+  tab_spanner(label = "Centered at MMT", columns = ends_with("MMT")) |> 
+  tab_spanner(label = "Centered at P75", columns = ends_with("p75")) |> 
+  cols_label(starts_with("greenspace") ~ "Greenspace",
+             starts_with("education") ~ "Education")
+
+saveRDS(tbl_multi_interaction_RR_diffs2, "2-code/p99_RR_by_city_multi_interaction_RR_diffs2.rds")
+
+# Ratio in RRs table (baseline: best case)
+tbl_multi_interaction_RR_diffs3 <- df_mi_fit2 |> 
+  pivot_wider(values_from = c(p99_v_MMT, p99_v_p75),
+              names_from = c(reference_group, prediction), names_sep = "_") |> 
+  mutate(city_name = city_name,
+         low_green_edu_p99_v_MMT = RR_ratio_est(p99_v_MMT_model_1_fit, p99_v_MMT_model_4_fit, p99_v_MMT_model_1_se, p99_v_MMT_model_4_se),#"{exp(p99_v_MMT_model_2_fit - p99_v_MMT_model_6_fit)} {sqrt(p99_v_MMT_model_2_se^2 + p99_v_MMT_model_6_se^2)}"),
+         low_green_p99_v_MMT     = RR_ratio_est(p99_v_MMT_model_2_fit, p99_v_MMT_model_4_fit, p99_v_MMT_model_2_se, p99_v_MMT_model_4_se),
+         low_edu_p99_v_MMT       = RR_ratio_est(p99_v_MMT_model_3_fit, p99_v_MMT_model_4_fit, p99_v_MMT_model_3_se, p99_v_MMT_model_4_se),
+         low_green_edu_p99_v_p75 = RR_ratio_est(p99_v_p75_model_1_fit, p99_v_p75_model_4_fit, p99_v_p75_model_1_se, p99_v_p75_model_4_se),
+         low_green_p99_v_p75     = RR_ratio_est(p99_v_p75_model_2_fit, p99_v_p75_model_4_fit, p99_v_p75_model_2_se, p99_v_p75_model_4_se),
+         low_edu_p99_v_p75       = RR_ratio_est(p99_v_p75_model_3_fit, p99_v_p75_model_4_fit, p99_v_p75_model_3_se, p99_v_p75_model_4_se), .keep = "none") |> 
+  gt(rowname_col = "city_name") |> 
+  tab_header(title = "Ratio of risk ratios at the 99th percentile temperature",
+             subtitle = "Comparison of best case scenario to variable changes") |> 
+  tab_spanner(label = "Centered at MMT", columns = ends_with("MMT")) |> 
+  tab_spanner(label = "Centered at P75", columns = ends_with("p75")) |> 
+  cols_label(starts_with("low_green_edu") ~ "Low Greenspace and Edu",
+             starts_with("low_green_p") ~ "Low Greenspace",
+             starts_with("low_edu") ~ "Low Education")
+
+saveRDS(tbl_multi_interaction_RR_diffs3, "2-code/p99_RR_by_city_multi_interaction_RR_diffs3.rds")
+
+# Difference in RRs table (baseline: best case)
+tbl_multi_interaction_RR_diffs4 <- df_mi_fit2 |> 
+  pivot_wider(values_from = c(p99_v_MMT, p99_v_p75),
+              names_from = c(reference_group, prediction), names_sep = "_") |> 
+  mutate(city_name = city_name,
+         low_green_edu_p99_v_MMT = RR_diff_est(p99_v_MMT_model_4_fit, p99_v_MMT_model_1_fit),#"{exp(p99_v_MMT_model_2_fit - p99_v_MMT_model_6_fit)} {sqrt(p99_v_MMT_model_2_se^2 + p99_v_MMT_model_6_se^2)}"),
+         low_green_p99_v_MMT  = RR_diff_est(p99_v_MMT_model_4_fit, p99_v_MMT_model_2_fit),
+         low_edu_p99_v_MMT  = RR_diff_est(p99_v_MMT_model_4_fit, p99_v_MMT_model_3_fit),
+         low_green_edu_p99_v_p75 = RR_diff_est(p99_v_p75_model_4_fit, p99_v_p75_model_1_fit),
+         low_green_p99_v_p75  = RR_diff_est(p99_v_p75_model_4_fit, p99_v_p75_model_2_fit),
+         low_edu_p99_v_p75  = RR_diff_est(p99_v_p75_model_4_fit, p99_v_p75_model_3_fit), .keep = "none") |> 
+  gt(rowname_col = "city_name") |> 
+  tab_header(title = "Difference of risk ratios at the 99th percentile temperature",
+             subtitle = "Comparison of best case scenario to variable changes") |> 
+  tab_spanner(label = "Centered at MMT", columns = ends_with("MMT")) |> 
+  tab_spanner(label = "Centered at P75", columns = ends_with("p75")) |> 
+  cols_label(starts_with("low_green_edu") ~ "Low Greenspace and Edu",
+             starts_with("low_green_p") ~ "Low Greenspace",
+             starts_with("low_edu") ~ "Low Education")
+
+saveRDS(tbl_multi_interaction_RR_diffs4, "2-code/p99_RR_by_city_multi_interaction_RR_diffs4.rds")
+
+# Difference in RRs table (baseline: best case)
+tbl_multi_interaction_RR_diffs4 <- df_mi_fit2 |> 
+  pivot_wider(values_from = c(p99_v_MMT, p99_v_p75),
+              names_from = c(reference_group, prediction), names_sep = "_") |> 
+  mutate(city_name = city_name,
+         low_green_edu_p99_v_MMT = RR_diff_est(p99_v_MMT_model_4_fit, p99_v_MMT_model_1_fit),#"{exp(p99_v_MMT_model_2_fit - p99_v_MMT_model_6_fit)} {sqrt(p99_v_MMT_model_2_se^2 + p99_v_MMT_model_6_se^2)}"),
+         low_green_p99_v_MMT  = RR_diff_est(p99_v_MMT_model_4_fit, p99_v_MMT_model_2_fit),
+         low_edu_p99_v_MMT  = RR_diff_est(p99_v_MMT_model_4_fit, p99_v_MMT_model_3_fit),
+         low_green_edu_p99_v_p75 = RR_diff_est(p99_v_p75_model_4_fit, p99_v_p75_model_1_fit),
+         low_green_p99_v_p75  = RR_diff_est(p99_v_p75_model_4_fit, p99_v_p75_model_2_fit),
+         low_edu_p99_v_p75  = RR_diff_est(p99_v_p75_model_4_fit, p99_v_p75_model_3_fit), .keep = "none") |> 
+  gt(rowname_col = "city_name") |> 
+  tab_header(title = "Difference of risk ratios at the 99th percentile temperature",
+             subtitle = "Comparison of best case scenario to variable changes") |> 
+  tab_spanner(label = "Centered at MMT", columns = ends_with("MMT")) |> 
+  tab_spanner(label = "Centered at P75", columns = ends_with("p75")) |> 
+  cols_label(starts_with("low_green_edu") ~ "Low Greenspace and Edu",
+             starts_with("low_green_p") ~ "Low Greenspace",
+             starts_with("low_edu") ~ "Low Education")
+
+saveRDS(tbl_multi_interaction_RR_diffs4, "2-code/p99_RR_by_city_multi_interaction_RR_diffs4.rds")
 
 # Category count table ----------------------------------------------------
 

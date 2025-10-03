@@ -1,0 +1,245 @@
+---
+title: "Report: 8/29/2025"
+author: Derek Weix
+brand: false
+format: 
+  html:
+    theme: cosmo
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+editor: source
+warning: false
+#cache: true
+cache.lazy: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introduction
+
+```{r}
+# Spatial Libraries
+library(arrow)
+library(geoarrow)
+library(sf)
+library(leaflet)
+
+# General Libraries
+library(tidyverse)
+library(here)
+library(patchwork)
+library(lubridate)
+library(glue)
+library(gt)
+
+# ggplot2 theming
+theme_set(theme_classic())
+theme_update(plot.title = element_text(hjust = 0.5),
+             plot.subtitle = element_text(hjust = 0.5),
+             strip.background = element_blank(),
+             strip.text = element_text(size = 12),
+             axis.text.x = element_text(angle = 30, vjust = 1, hjust=1))
+```
+
+This doc includes the count of each neighborhood type by city, and additionally provides spatial plots of the neighborhood types across each city. Furthermore, RRs at the 99th temperature percentile (P99) are shown compared to both the MMT and P75.
+
+
+# Analysis Excluding Pop Density
+
+```{r}
+#| code-summary: "Read in neighborhood level variables."
+
+# Load data ---------------------------------------------------------------
+list_df <- readRDS(here("1-data", "list_city_df.rds"))
+city_names <- names(list_df)
+var_names <- c(pct_green = "Percent Greenspace",
+               pct_educated = "Percent Educated",
+               pop_density = "Population Density")
+
+list_df <- list_df |> 
+  map(\(df0) {
+    # Define city-specific median points
+    med_pct_green    <- median(df0$pct_green)
+    med_pct_educated <- median(df0$pct_educated)
+    med_pop_density  <- median(df0$pop_density)
+    
+    # Add categorical dummy variables
+    df0 <- df0 |> 
+      mutate(pct_green_low    = ifelse(pct_green    <= med_pct_green,    1, 0),
+             pct_green_high   = ifelse(pct_green    >  med_pct_green,    1, 0),
+             pct_educated_low = ifelse(pct_educated <= med_pct_educated, 1, 0),
+             pct_educated_high= ifelse(pct_educated >  med_pct_educated, 1, 0),
+             pop_density_low  = ifelse(pop_density  <= med_pop_density,  1, 0),
+             pop_density_high = ifelse(pop_density  >  med_pop_density,  1, 0))
+  })
+```
+
+```{r}
+#| code-summary: "Read in spatial boundaries."
+# Pennsylvania ------------------------------------------------------------
+phl_sf <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze//schema_ccuh_phl_metro_nbhd/schema_ccuh_phl_metro_nbhd__nad83.parquet" %>%
+  arrow::open_dataset() %>% 
+  sf::st_as_sf()
+
+# SALURBAL Cities ---------------------------------------------------------
+
+# Connect to API
+df_salurbal_nbhd <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/salurbal_boundaries__v1/salurbal_boundaries_v1.parquet" %>% 
+  arrow::open_dataset() |> 
+  sf::st_as_sf()
+
+# Create city specific sf object
+rio_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "102190"), geo == "l2_5") |> mutate(nbhd_geoid = geoid, city_name = "Rio de Janiero")
+sao_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "102248"), geo == "l2_5") |> mutate(nbhd_geoid = geoid, city_name = "Sao Paulo")
+gua_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "203102"), geo == "l2")   |> mutate(nbhd_geoid = geoid, city_name = "Guatemala City")
+pan_sf <- df_salurbal_nbhd |> filter(str_detect(geoid, "206101"), geo == "l2")   |> mutate(nbhd_geoid = geoid, city_name = "Panama City")
+
+# Bind into list
+list_sf <- list(gua_sf, pan_sf, phl_sf, rio_sf, sao_sf)
+```
+
+## RR Results
+```{r}
+readRDS("p99_RR_by_city_multi_interaction2.rds")
+```
+
+```{r}
+readRDS("p99_RR_by_city_multi_interaction_RR_diffs3.rds")
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 4
+
+gt_tibble <- readRDS("p99_RR_by_city_multi_interaction_RR_diffs3.rds") |> as.data.frame()
+
+gt_tibble |> 
+  mutate(across(starts_with("low"), \(x) str_extract_all(x, "[0-9.]+"))) |> 
+  unnest(starts_with("low")) |> 
+  mutate(type = rep(c("center", "lower", "upper"), 5),
+         across(starts_with("low"), as.numeric)) |> 
+  pivot_longer(-c(city_name, type),
+               names_to = c("var_change", "center"),
+               names_sep = "_p99_v_") |>
+  pivot_wider(values_from = value,
+              names_from = type,
+              names_glue = "value_{type}") |>
+  filter(center == "p75") |> 
+  ggplot(aes(x = var_change, color = var_change)) +
+  geom_hline(yintercept = 1) +
+  geom_point(aes(y = value_center), size = 3) +
+  geom_errorbar(aes(ymin = value_lower,
+                    ymax = value_upper),
+                width = .5) +
+  facet_wrap(~ city_name, ncol = 5) +
+  coord_trans(y = "log") +
+  scale_color_brewer(palette = "Dark2") +
+  scale_x_discrete(labels = c("Low Edu", "Low Greenspace", "Low Edu & Greenspace")) +
+  labs(title = "Change in risk at 99th Temperature Percentile", 
+       subtitle = "Temperature Mortality Curves Centered at City Specific 75th Temperature Percentile",
+       y = "Ratio of Risk Ratios", x = "") +
+  theme(legend.position = "") 
+```
+
+
+
+## Neighborhood Counts
+```{r}
+readRDS("nbhd_category_count_by_country2.rds")
+```
+
+## Spatial Plots
+
+```{r}
+#| code-summary: "Create spatial plots."
+# Neighborhood level without pop density
+var_levels2 <- c(
+  model_1 = "Low Green and Edu",
+  model_2 = "Low Green and High Edu",
+  model_3 = "High Green and Low Edu",
+  model_4 = "High Green and Edu"
+)
+
+# Classify each neighborhood
+df_categories2 <- list_df |> 
+  map(\(df_country) {
+    df_country |> 
+      summarize(across(everything(), first), .by = nbhd_geoid) |> 
+      mutate(nbhd_type = case_when(
+        pct_green_low == 1 & pct_educated_low == 1 ~ var_levels2[1],
+        pct_green_low == 1 & pct_educated_low == 0 ~ var_levels2[2],
+        pct_green_low == 0 & pct_educated_low == 1 ~ var_levels2[3],
+        pct_green_low == 0 & pct_educated_low == 0 ~ var_levels2[4],
+        .default = NA
+      ) |> factor(levels = var_levels2))
+  })
+
+# Create Spatial plots of each neighborhood
+list_spatial_plots2 <- 
+  pmap(list(name = city_names,
+            sf   = list_sf,
+            df   = df_categories2), 
+       \(name, sf, df) {
+         sf |> 
+           left_join(df, by = "nbhd_geoid") |> 
+           ggplot(aes(fill = nbhd_type)) +
+           geom_sf() +
+           scale_fill_brewer(type = "qual", drop = FALSE) +
+           labs(title = name, fill = "Neiborhood\nType")
+       })
+```
+
+```{r}
+#| code-summary: "Show spatial plots."
+
+list_spatial_plots2[[1]]
+list_spatial_plots2[[2]]
+list_spatial_plots2[[3]]
+list_spatial_plots2[[4]]
+list_spatial_plots2[[5]]
+```
+
+# Correlation Plots
+
+```{r}
+#| code-summary: "Create correlation plots."
+#| fig-width: 8
+#| fig-height: 8
+
+# Create plots
+list_cor_plots <-
+  pmap(list(name = city_names,
+            df = list_df),
+       \(name, df) {
+         map2(c("pct_green",   "pct_green",    "pct_educated"), 
+              c("pop_density", "pct_educated", "pop_density"),
+              \(var1, var2) {
+                df |>
+                  summarize(across(everything(), first), .by = c(nbhd_geoid)) |>
+                  ggplot(aes(.data[[var1]], .data[[var2]])) +
+                  geom_point() +
+                  geom_smooth(method = "lm", se = FALSE) +
+                  ggpubr::stat_cor(label.x = 80, aes(label = after_stat(r.label))) +
+                  scale_x_continuous(limits = c(0, 100)) +
+                  labs(title = name, x = var_names[[var1]], y = var_names[[var2]])
+              }) |> set_names(c("cor1", "cor2", "cor3"))
+  })
+
+
+
+# Display pct_green and pop_density
+wrap_plots(map(list_cor_plots, \(x) x$cor1), ncol = 2)
+
+# Display pct_green and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor2), ncol = 2)
+
+# Display pop_desnity and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor3), ncol = 2)
+
+```
+

@@ -1,5 +1,5 @@
 ---
-title: "Report: 6/9/2025"
+title: "Report: 8/28/2025"
 author: Derek Weix
 brand: false
 format: 
@@ -57,6 +57,12 @@ First we show the results including the percent greenspace, percent educated, an
 readRDS("p99_RR_by_city_multi_interaction.rds")
 ```
 
+```{r}
+readRDS("p99_RR_by_city_multi_interaction_RR_diffs.rds")
+```
+
+
+
 ## Neighborhood Counts
 ```{r}
 readRDS("nbhd_category_count_by_country.rds")
@@ -70,6 +76,9 @@ readRDS("nbhd_category_count_by_country.rds")
 # Load data ---------------------------------------------------------------
 list_df <- readRDS(here("1-data", "list_city_df.rds"))
 city_names <- names(list_df)
+var_names <- c(pct_green = "Percent Greenspace",
+               pct_educated = "Percent Educated",
+               pop_density = "Population Density")
 
 list_df <- list_df |> 
   map(\(df0) {
@@ -179,6 +188,37 @@ list_spatial_plots[[5]]
 readRDS("p99_RR_by_city_multi_interaction2.rds")
 ```
 
+```{r}
+RR_ratio_est <- function(fit1, fit2, se1, se2) {
+  glue("{RR} ({lower}, {upper})",
+       RR = round(exp(fit1 - fit2), 3),
+       lower = round(exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)), 3),
+       upper = round(exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)), 3))
+}
+
+readRDS("p99_RR_by_city_multi_interaction_RR_diffs2.rds")
+```
+
+```{r}
+RR_ratio_est <- function(fit1, fit2, se1, se2) {
+  glue("{RR} ({lower}, {upper})",
+       RR = round(exp(fit1 - fit2), 3),
+       lower = round(exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)), 3),
+       upper = round(exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)), 3))
+}
+
+readRDS("p99_RR_by_city_multi_interaction_RR_diffs3.rds")
+```
+
+```{r}
+RR_diff_est <- function(fit1, fit2) {
+  glue("{RR}", RR = round(exp(fit1) - exp(fit2), 3))
+}
+
+readRDS("p99_RR_by_city_multi_interaction_RR_diffs4.rds")
+```
+
+
 ## Neighborhood Counts
 ```{r}
 readRDS("nbhd_category_count_by_country2.rds")
@@ -234,3 +274,43 @@ list_spatial_plots2[[3]]
 list_spatial_plots2[[4]]
 list_spatial_plots2[[5]]
 ```
+
+# Correlation Plots
+
+```{r}
+#| code-summary: "Create correlation plots."
+#| fig-width: 8
+#| fig-height: 8
+
+# Create plots
+list_cor_plots <-
+  pmap(list(name = city_names,
+            df = list_df),
+       \(name, df) {
+         map2(c("pct_green",   "pct_green",    "pct_educated"), 
+              c("pop_density", "pct_educated", "pop_density"),
+              \(var1, var2) {
+                df |>
+                  summarize(across(everything(), first), .by = c(nbhd_geoid)) |>
+                  ggplot(aes(.data[[var1]], .data[[var2]])) +
+                  geom_point() +
+                  geom_smooth(method = "lm", se = FALSE) +
+                  ggpubr::stat_cor(label.x = 80, aes(label = after_stat(r.label))) +
+                  scale_x_continuous(limits = c(0, 100)) +
+                  labs(title = name, x = var_names[[var1]], y = var_names[[var2]])
+              }) |> set_names(c("cor1", "cor2", "cor3"))
+  })
+
+
+
+# Display pct_green and pop_density
+wrap_plots(map(list_cor_plots, \(x) x$cor1), ncol = 2)
+
+# Display pct_green and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor2), ncol = 2)
+
+# Display pop_desnity and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor3), ncol = 2)
+
+```
+
