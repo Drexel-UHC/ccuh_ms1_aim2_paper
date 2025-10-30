@@ -4,7 +4,7 @@
 
 ### Main Analysis:
 
-- `data_wrangling.R`: Pull data from CCUH API and apply basic formatting. Save formatted data to `data` folder.
+- `import_data.R`: Pull data from CCUH API and apply basic formatting. Save formatted data to `data` folder.
 - `fit_models.R`: Fit conditional quasi-Poisson models for overall & interaction analyses.
 
 ### Extra Analysis

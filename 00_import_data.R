@@ -15,4 +15,4 @@ list_df <-
   })
 
 # Save formatted list of dfs
-saveRDS(list_df, "1-data/list_city_df.rds")
+saveRDS(list_df, "data/list_city_df.rds")
