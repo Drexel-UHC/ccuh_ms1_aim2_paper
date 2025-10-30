@@ -43,7 +43,7 @@ theme_update(plot.title = element_text(hjust = 0.5),
 #| code-summary: "Read in the data."
 
 # Get base data
-df <- read_csv(here("1-data", "merged_data_by_age.csv")) |> 
+df <- read_csv(here("data", "merged_data_by_age.csv")) |> 
   filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
 
 # Data frame with only unique entries of modifiers
