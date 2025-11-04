@@ -120,10 +120,10 @@ list_city_int_model <-
          
          # Specify interaction model formulas
          list_int_formula <- 
-           list(form_1 = "cb_lgle",
-                form_2 = "cb_lghe",
-                form_3 = "cb_hgle",
-                form_4 = "cb_hghe") |> 
+           list(low_green_low_edu   = "cb_lgle",
+                low_green_high_edu  = "cb_lghe",
+                high_green_low_edu  = "cb_hgle",
+                high_green_high_edu = "cb_hghe") |> 
            map(\(x) {
              # Extract all terms except the reference group
              int_terms <- str_subset(vec_int_terms, x, negate = TRUE) |> paste(collapse = " + ")
