@@ -1,127 +1,150 @@
 library(tidyverse)
 library(glue)
 library(gnm); library(dlnm); library(splines)
+library(SALURhelper)
 
-# Data formatting ---------------------------------------------------------
 
 # Load data
-df <- "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |> 
-  arrow::open_dataset() |>  
-  dplyr::collect()
+list_city_df <- readRDS("data/list_city_df.rds")
 
-# Create list of data frames by city
-list_city_df <- 
-  df_data_age |> 
-  split(df_data_age$city_name) |>
-  discard_at(c("Belo Horizonte", "Campinas")) |>
-  map(\(df_city) {
-    df_city |> 
-      mutate(strata = glue("{nbhd_geoid}:{year(date)}:{month(date)}:{wday(date, label = TRUE)}:{age_category}"),
-             group = glue("{nbhd_geoid}:{age_category}"),
-             across(c(nbhd_geoid, strata, group, age_category), factor)) |> 
-      arrange(across(c(nbhd_geoid, date, age_category)))
-  })
+# Specify model parameters ------------------------------------------------
 
+# Number of lagged temperatures considered in model
+n_lag <- 21
+
+knot_quantiles <- c(.1, .75, .9)
 
 
 # Fit base models ---------------------------------------------------------
 
-# Number of lagged temperatures considered in model
-n_lags <- 21
-
-# Fit model sans modifiers
+# Fit overall models
 list_city_model <- list_city_df |> 
   map(\(df_city) {
     
     # Specify knots placement
-    var_knots <- quantile(df_city$popwt_temp, c(.1, .75, .9), na.rm = TRUE)
-    lag_knots <- logknots(n_lags, nk = 3)
+    var_knots <- quantile(df_city$popwt_temp, knot_quantiles, na.rm = TRUE)
+    lag_knots <- logknots(n_lag, nk = 3)
+    
+    # Sequence of exposures for crosspred `at` parameter
+    pred_seq <- seq(min(df_city$popwt_temp), 
+                    max(df_city$popwt_temp),
+                    length.out = 101)
     
     # Specify cross-basis
-    cbt <- crossbasis(df_city$popwt_temp, lag = n_lags,
+    cbt <- crossbasis(df_city$popwt_temp, lag = n_lag,
                       argvar = list(fun = "ns", knots = var_knots),
                       arglag = list(fun = "ns", knots = lag_knots),
                       group = df_city$group)
     
-    # Define reduced cross-basis for future predictions
+    # Define reduced cross-basis
     cbt_red <- onebasis(df_city$popwt_temp, fun = "ns", knots = var_knots)
     
     # Fit city-specific model
     model <- gnm(death ~ cbt, 
-                 family = quasipoisson(),
+                 family = quasipoisson,
                  eliminate = strata,
                  data = df_city)
     
-    # This list contains the relevant information calculated for model fitting
-    list(cb = cbt,
-         cb_red = cbt_red,
-         pred_seq = seq(min(df_city$popwt_temp),
-                        max(df_city$popwt_temp),
-                        length.out = 101), # Number sequence for crosspred `at` parameter
+    # This list contains the relevant information calculated from model fitting
+    # (The model itself is not saved for memory reasons)
+    list(cbt      = cbt,
+         cbt_red  = cbt_red,
+         pred_seq = pred_seq,
+         p99  = quantile(df_city$popwt_temp, .99),
+         p75  = quantile(df_city$popwt_temp, .75),
+         MMT  = get_MMT(crossreduce(cbt, model, at = pred_seq)),
          coef = coef(model),
          vcov = vcov(model),
          link = model$family$link)
   })
 
 
+saveRDS(list_city_model, "models/list_city_model.rds")
 
 
 # Fit interaction model (1 factor of 4 levels) ----------------------------
 
+# Define possible neighborhood types
+names_nbhd_type <- c("low_green_low_edu",
+                     "low_green_high_edu",
+                     "high_green_low_edu", 
+                     "high_green_high_edu")
 
-# Interaction models
-df_city_rotating_pred <- 
-  # Map over cities
-  map(list_city_df,
-       \(df_city) {
-         
-         # Add binary indicator columns for each modifier of interest
-         df_city <- df_city |> 
-           mutate(across(all_of(modifiers_of_interest), \(x) ifelse(x - median(x) <  0, 1, 0),
-                         .names = "{.col}_low"), # Below median
-                  across(all_of(modifiers_of_interest), \(x) ifelse(x - median(x) >= 0, 1, 0),
-                         .names = "{.col}_high"))# Above median
-         
-         # Set P99 and P75
-         p99 <- quantile(df_city$popwt_temp, .99)
-         p75 <- quantile(df_city$popwt_temp, .75)
-         
-         
-         # Map over modifiers of interest
-         modifiers_of_interest[-1] |> 
-           map(\(var) {
-             # Original cross-basis
-             cbt <- city_model$cb
-             
-             # Interaction cross-bases
-             grn_1 <- cbt * df_city[["pct_green_low"]]
-             grn_2 <- cbt * df_city[["pct_green_high"]]
-             int_1 <- cbt * df_city[[glue("{var}_low")]]
-             int_2 <- cbt * df_city[[glue("{var}_high")]]
-             
-             # Fit new interaction models with low and high reference groups
-             list_models <- 
-               list(model_11 = update(city_model$model, . ~ . + grn_2 + int_2), # Reference group: low green low int
-                    model_12 = update(city_model$model, . ~ . + grn_2 + int_1), # Reference group: low green high int
-                    model_21 = update(city_model$model, . ~ . + grn_1 + int_2), # Reference group: high green low int
-                    model_22 = update(city_model$model, . ~ . + grn_1 + int_1)) # Reference group: high green high int
-             
-             # Get RR at P99 vs P75
-             df_RR_p99 <- list_models |> 
-               map(\(model) {
-                 p99_v_p75 <- crossreduce(cbt, model, at = p99, cen = p75)
-                 
-                 tibble(prediction = c('fit', 'se', 'center', 'lower', 'upper'),
-                        p99_v_p75 = c(p99_v_p75$fit, p99_v_p75$se, p99_v_p75$RRfit, p99_v_p75$RRlow, p99_v_p75$RRhigh))
-               }) |> list_rbind(names_to = 'reference_group')
-             
-             df_RR_p99
-             
-           }, .progress = TRUE) |> set_names(modifiers_of_interest[-1]) |> list_rbind(names_to = 'modifiers_of_interest')
-         
-       }) |> list_rbind(names_to = 'city_name')
+# Define neighborhoods by type per city
+list_city_df <- list_city_df |> 
+  map(\(df_city) {
+    # Cutoff values for nbhd definitions
+    cutoff_grn <- median(df_city$pct_green)
+    cutoff_edu <- median(df_city$pct_educated)
+    
+    # Create nbhd_type factor
+    df_city <- df_city |> 
+      mutate(nbhd_type = case_when(
+        pct_green < cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[1],
+        pct_green < cutoff_grn & pct_educated >=cutoff_edu ~ names_nbhd_type[2],
+        pct_green >=cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[3],
+        pct_green >=cutoff_grn & pct_educated >=cutoff_edu ~ names_nbhd_type[4],
+        .default = "None") |> factor(levels = names_nbhd_type))
+    
+    # Create df of dummy variables
+    df_dummy_vars <- model.matrix(~ nbhd_type + 0, data = df_city) |> 
+      as_tibble() |> 
+      rename_with(\(x) str_remove(x, "nbhd_type"))
+    
+    # Return new df with factor & dummy variables
+    bind_cols(df_city, df_dummy_vars)
+  })
 
+# Fit interaction models
+list_city_int_model <- 
+  pmap(list(df_city = list_city_df,
+            model_city = list_city_model),
+       \(df_city, model_city) {
+         
+         # Fit initial model
+         model <- gnm(death ~ model_city$cbt,
+                      family = quasipoisson,
+                      eliminate = strata,
+                      data = df_city)
+         
+         # Number of coefficients to extract
+         n_coef <- ncol(model_city$cbt)
+         
+         # Specify interaction cross-bases
+         cb_lgle <- model_city$cbt * df_city$low_green_low_edu
+         cb_lghe <- model_city$cbt * df_city$low_green_high_edu
+         cb_hgle <- model_city$cbt * df_city$high_green_low_edu
+         cb_hghe <- model_city$cbt * df_city$high_green_high_edu
+         
+         vec_int_terms <- c("cb_lgle", "cb_lghe", "cb_hgle", "cb_hghe")
+         
+         # Specify interaction model formulas
+         list_int_formula <- 
+           list(form_1 = "cb_lgle",
+                form_2 = "cb_lghe",
+                form_3 = "cb_hgle",
+                form_4 = "cb_hghe") |> 
+           map(\(x) {
+             # Extract all terms except the reference group
+             int_terms <- str_subset(vec_int_terms, x, negate = TRUE) |> paste(collapse = " + ")
+             
+             # Create formula
+             glue(". ~ . + {int_terms}") |> as.formula()
+             })
+         
+         # Fit interaction models & extract coefs & vcovs
+         list_int_model <- 
+           list_int_formula |> 
+           map(\(int_formula) {
+             # Fit interaction model
+             city_int_model <- update(model, int_formula)
+             
+             # Extract reference group's coefs & associated vcov
+             list(coef = coef(city_int_model)[1:n_coef],
+                  vcov = vcov(city_int_model)[1:n_coef, 1:n_coef],
+                  link = city_int_model$family$link)
+           })
+         
+       }, .progress = TRUE)
 
-# Fit interaction model (2 factors of 2 levels) ---------------------------
-
-
+saveRDS(list_city_int_model, "models/list_city_int_model.rds")
