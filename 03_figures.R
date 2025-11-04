@@ -13,6 +13,28 @@ theme_update(plot.title = element_text(hjust = 0.5),
 list_city_df <- readRDS("data/list_city_df.rds")
 list_city_model <- readRDS("models/list_city_model.rds")
 list_city_int_model <- readRDS("models/list_city_int_model.rds")
+df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
+
+
+# Ratio of RRs ------------------------------------------------------------
+
+df_RR_ratio |> 
+  filter(!(city_name %in% c("Guatemala City", "Panama City"))) |> 
+  pivot_longer(contains("low_")) |> 
+  pivot_wider(values_from = value,
+              names_from = estimate) |> 
+  ggplot(aes(x = name, color = name)) +
+  geom_hline(yintercept = 1) +
+  geom_errorbar(aes(ymin = RR_ratio_low,
+                    ymax = RR_ratio_high), width = .5) +
+  geom_point(aes(y = RR_ratio), size = 3) +
+  facet_wrap(~ city_name, ncol = 5)
+
+findmin(list_city_model$`Guatemala City`$cbt,
+        coef = list_city_int_model$`Guatemala City`$low_green_low_edu$coef,
+        vcov = list_city_int_model$`Guatemala City`$low_green_low_edu$vcov,
+        sim = TRUE,
+        nsim = 10000) |> quantile(c(.025, .975))
 
 # Overall city curves -----------------------------------------------------
 
@@ -28,8 +50,6 @@ list_city_pred <- list_city_model |>
                   model.link = city_model$link,
                   at = city_model$pred_seq,
                   cen = city_model$MMT) # Can change between p75 and MMT
-    
-    names(city_pred)
     
     # Format df to return
     get_df_RRs(city_pred)
