@@ -22,8 +22,7 @@ df_pred <- list_city_model |>
                   cen = city_model$MMT) # Can change between p75 and MMT
     
     # Format df to return
-    tibble(prediction = c("center", "lower", "upper", "fit", "se"),
-           RR = c(city_pred$RRfit, city_pred$RRlow, city_pred$RRhigh, city_pred$fit, city_pred$se))
+    get_df_RRs(city_pred)
   }) |> 
   list_rbind(names_to = "city_name")
 
@@ -50,8 +49,7 @@ df_int_pred <-
                            cen = city_model$MMT) 
              
              # Format df to return
-             tibble(prediction = c("center", "lower", "upper", "fit", "se"),
-                    RR = c(city_pred$RRfit, city_pred$RRlow, city_pred$RRhigh, city_pred$fit, city_pred$se))
+             get_df_RRs(city_pred)
            }) |> 
            list_rbind(names_to = "nbhd_type")
        }) |> 
@@ -64,18 +62,19 @@ write_csv(df_int_pred, "results/RR_p99_interaction.csv")
 
 # Helper function
 RR_ratio_est <- function(fit1, fit2, se1, se2) {
-  c(RR = exp(fit1 - fit2),
-    lower = exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)),
-    upper = exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)))
+  c(RR_ratio = exp(fit1 - fit2),
+    RR_ratio_low = exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)),
+    RR_ratio_high = exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)))
 }
 
 # Calculate ratio of RRs
 df_RR_ratio <- 
   df_int_pred |> 
-  filter(prediction %in% c("fit", "se")) |> 
-  pivot_wider(values_from = RR,
-              names_from = c(prediction, nbhd_type),
-              names_sep = "_") |> 
+  #filter(prediction %in% c("fit", "se")) |> 
+  pivot_wider(names_from = nbhd_type,
+              names_glue = "{.value}_{nbhd_type}",
+              values_from = c(fit, se), 
+              id_cols = "city_name") |> 
   reframe(city_name = rep(city_name, each = 3),
           estimate = rep(names(RR_ratio_est(1, 1, .1, .1)), length(unique(city_name))),
           low_green_low_edu = RR_ratio_est(fit_low_green_low_edu, fit_high_green_high_edu, se_low_green_low_edu, se_high_green_high_edu),
