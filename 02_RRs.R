@@ -70,15 +70,14 @@ RR_ratio_est <- function(fit1, fit2, se1, se2) {
 # Calculate ratio of RRs
 df_RR_ratio <- 
   df_int_pred |> 
-  #filter(prediction %in% c("fit", "se")) |> 
   pivot_wider(names_from = nbhd_type,
               names_glue = "{.value}_{nbhd_type}",
               values_from = c(fit, se), 
               id_cols = "city_name") |> 
-  reframe(city_name = rep(city_name, each = 3),
-          estimate = rep(names(RR_ratio_est(1, 1, .1, .1)), length(unique(city_name))),
+  reframe(estimate = names(RR_ratio_est(1, 1, .1, .1)),
           low_green_low_edu = RR_ratio_est(fit_low_green_low_edu, fit_high_green_high_edu, se_low_green_low_edu, se_high_green_high_edu),
           low_green         = RR_ratio_est(fit_low_green_high_edu, fit_high_green_high_edu, se_low_green_high_edu, se_high_green_high_edu),
-          low_edu           = RR_ratio_est(fit_high_green_low_edu, fit_high_green_high_edu, se_high_green_low_edu, se_high_green_high_edu))
+          low_edu           = RR_ratio_est(fit_high_green_low_edu, fit_high_green_high_edu, se_high_green_low_edu, se_high_green_high_edu),
+          .by = city_name)
 
 write_csv(df_RR_ratio, "results/RR_p99_ratio.csv")
