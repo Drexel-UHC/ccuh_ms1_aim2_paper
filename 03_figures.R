@@ -30,12 +30,6 @@ df_RR_ratio |>
   geom_point(aes(y = RR_ratio), size = 3) +
   facet_wrap(~ city_name, ncol = 5)
 
-findmin(list_city_model$`Guatemala City`$cbt,
-        coef = list_city_int_model$`Guatemala City`$low_green_low_edu$coef,
-        vcov = list_city_int_model$`Guatemala City`$low_green_low_edu$vcov,
-        sim = TRUE,
-        nsim = 10000) |> quantile(c(.025, .975))
-
 # Overall city curves -----------------------------------------------------
 
 # Get overall RRs at values of pred_seq
@@ -49,7 +43,7 @@ list_city_pred <- list_city_model |>
                   vcov = city_model$vcov,
                   model.link = city_model$link,
                   at = city_model$pred_seq,
-                  cen = city_model$MMT) # Can change between p75 and MMT
+                  cen = city_model$p75) # Can change between p75 and MMT
     
     # Format df to return
     get_df_RRs(city_pred)
@@ -115,7 +109,7 @@ list_city_int_pred <-
                            vcov = nbhd_type_model$vcov,
                            model.link = nbhd_type_model$link,
                            at = city_model$pred_seq,
-                           cen = city_model$MMT) 
+                           cen = city_model$p75) 
              
              # Format df to return
              get_df_RRs(city_pred)

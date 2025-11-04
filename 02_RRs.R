@@ -19,7 +19,7 @@ df_pred <- list_city_model |>
                   vcov = city_model$vcov,
                   model.link = city_model$link,
                   at = city_model$p99,
-                  cen = city_model$MMT) # Can change between p75 and MMT
+                  cen = city_model$p75) # Can change between p75 and MMT
     
     # Format df to return
     get_df_RRs(city_pred)
@@ -46,7 +46,7 @@ df_int_pred <-
                            vcov = nbhd_type_model$vcov,
                            model.link = nbhd_type_model$link,
                            at = city_model$p99,
-                           cen = city_model$MMT) 
+                           cen = city_model$p75) 
              
              # Format df to return
              get_df_RRs(city_pred)
