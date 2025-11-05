@@ -128,6 +128,58 @@ df1 |>
 ```
 
 ```{r}
+#| code-summary: "Correlation plots."
+#| fig-width: 8
+#| fig-height: 6
+
+# Create plots
+list_cor_plots <-
+  pmap(list(name = city_names,
+            df = list_df),
+       \(name, df) {
+         map2(c("pct_green",   "pct_green",    "pct_educated"), 
+              c("pop_density", "pct_educated", "pop_density"),
+              \(var1, var2) {
+                df |>
+                  summarize(across(everything(), first), .by = c(nbhd_geoid)) |>
+                  ggplot(aes(.data[[var1]], .data[[var2]])) +
+                  geom_point() +
+                  geom_smooth(method = "lm", se = FALSE) +
+                  ggpubr::stat_cor(label.x = 80, aes(label = after_stat(r.label))) +
+                  scale_x_continuous(limits = c(0, 100)) +
+                  labs(title = name, x = var_names[[var1]], y = var_names[[var2]])
+              }) |> set_names(c("cor1", "cor2", "cor3"))
+  })
+
+
+
+# Display pct_green and pop_density
+wrap_plots(map(list_cor_plots, \(x) x$cor1), ncol = 2)
+```
+
+```{r}
+#| code-summary: "Correlation plots."
+#| fig-width: 8
+#| fig-height: 6
+
+
+# Display pct_green and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor2), ncol = 2)
+```
+
+```{r}
+#| code-summary: "Correlation plots."
+#| fig-width: 8
+#| fig-height: 6
+
+
+# Display pop_desnity and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor3), ncol = 2)
+```
+
+
+
+```{r}
 #| code-summary: "Scatter plot of modifiers and death."
 #| fig-width: 8
 #| fig-height: 2
