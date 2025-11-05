@@ -15,6 +15,18 @@ list_city_model <- readRDS("models/list_city_model.rds")
 list_city_int_model <- readRDS("models/list_city_int_model.rds")
 df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
 
+# Labeller
+label_nbhd_change <- c("Low Edu", "Low Green", "Low Green Low Edu")
+label_nbhd_type   <- c("Low Green Low Edu", "Low Green High Edu", "High Green Low Edu", "High Green High Edu")
+
+convert_to_label <- function(string, label_order) {
+  string |> 
+    str_replace_all("_", " ") |> 
+    str_to_title() |> 
+    factor(levels = label_order)
+  
+}
+
 
 # Ratio of RRs ------------------------------------------------------------
 
@@ -23,12 +35,18 @@ df_RR_ratio |>
   pivot_longer(contains("low_")) |> 
   pivot_wider(values_from = value,
               names_from = estimate) |> 
+  mutate(name = convert_to_label(name, label_nbhd_change)) |> 
   ggplot(aes(x = name, color = name)) +
   geom_hline(yintercept = 1) +
   geom_errorbar(aes(ymin = RR_ratio_low,
                     ymax = RR_ratio_high), width = .5) +
   geom_point(aes(y = RR_ratio), size = 3) +
-  facet_wrap(~ city_name, ncol = 5)
+  scale_color_brewer(type = "qual", direction = -1) +
+  facet_wrap(~ city_name, ncol = 5) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(color = "", x = "", y = "Ratio RRs")
+
+ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 25, height = 10)
 
 # Overall city curves -----------------------------------------------------
 
@@ -91,6 +109,8 @@ list_TMC_plot <-
 
 wrap_plots(list_TMC_plot, nrow = 2)
 
+ggsave("sup_results/figure_TMC_overall.pdf", units = "cm", width = 30, height = 25)
+
 
 # Neighborhood type city curves -------------------------------------------
 
@@ -126,14 +146,17 @@ list_TMC_int_plot <-
          
          # Overall curve TMC
          p1 <- city_int_pred |> 
+           mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type)) |> 
            ggplot(aes(exposure, color = nbhd_type, fill = nbhd_type)) +
            geom_ribbon(aes(ymin = RR_low, ymax = RR_high), alpha = .2) +
            geom_line(aes(y = RR)) +
            geom_hline(yintercept = 1) +
            coord_transform(y = "log") +
            scale_x_continuous(limits = x_lims) +
-           #scale_y_continuous(limits = y_lims) +
+           scale_color_brewer(type = "qual") +
+           scale_fill_brewer(type = "qual") +
            labs(title = glue("{city_name}"),
+                color = "", fill = "",
                 x = NULL, y = "RR") 
          
          # Temperature histogram
@@ -151,3 +174,5 @@ list_TMC_int_plot <-
        })
 
 wrap_plots(list_TMC_int_plot, nrow = 2, guides = "collect")
+
+ggsave("sup_results/figure_TMC_nbhd_type.pdf", units = "cm", width = 30, height = 25)
