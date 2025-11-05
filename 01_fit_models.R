@@ -7,15 +7,12 @@ library(SALURhelper)
 # Load data
 list_city_df <- readRDS("data/list_city_df.rds")
 
-# Specify model parameters ------------------------------------------------
-
-# Number of lagged temperatures considered in model
-n_lag <- 21
-
-knot_quantiles <- c(.1, .75, .9)
-
 
 # Fit base models ---------------------------------------------------------
+
+# Specify model parameters
+n_lag <- 21
+knot_quantiles <- c(.1, .75, .9)
 
 # Fit overall models
 list_city_model <- list_city_df |> 
