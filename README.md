@@ -16,5 +16,6 @@
 
 - `data`: A folder to store formatted data originally pulled from the CCUH API.
 - `models`: A folder to store fitted models and intermediary results.
-- `results`: A folder to final figures and tables of the analysis.
+- `results`: A folder for final figures and tables of the analysis.
+- `sup_results`: A folder for supplemental figures and table of the analysis.
 - `2-legacy-code`: A folder of legacy code that is being adapted in scripts.
