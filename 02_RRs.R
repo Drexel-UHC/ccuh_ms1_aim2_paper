@@ -3,6 +3,9 @@ library(glue)
 library(gnm); library(dlnm); library(splines)
 library(SALURhelper)
 
+# Load helper functions
+source("helper_functions.R")
+
 # Load models
 list_city_model <- readRDS("models/list_city_model.rds")
 list_city_int_model <- readRDS("models/list_city_int_model.rds")
@@ -60,13 +63,6 @@ write_csv(df_int_pred, "results/RR_p99_interaction.csv")
 
 
 # Get ratio of RRs --------------------------------------------------------
-
-# Helper function
-RR_ratio_est <- function(fit1, fit2, se1, se2) {
-  c(RR_ratio = exp(fit1 - fit2),
-    RR_ratio_low = exp(fit1 - fit2 - qnorm(.975)*sqrt(se1^2 + se2^2)),
-    RR_ratio_high = exp(fit1 - fit2 + qnorm(.975)*sqrt(se1^2 + se2^2)))
-}
 
 # Calculate ratio of RRs
 df_RR_ratio <- 

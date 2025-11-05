@@ -7,7 +7,9 @@
 - `import_data.R`: Pull data from CCUH API and apply basic formatting. Save formatted data to `data` folder.
 - `fit_models.R`: Fit conditional quasi-Poisson models for overall & interaction analyses.
 - `RRs.R`: Estimate the RRs at the 99th temperature percentile for cities and their neighborhood types.
-- `figures.R` Create figures from the analysis.
+- `figures.R`: Create figures from the analysis.
+- `spatial_figures.R`: Create plot of neighborhood types for each city with spatial boundaries.
+- `helper_functions.R`: Hosts additional functions used to make code cleaner.
 
 ### Extra Analysis
 

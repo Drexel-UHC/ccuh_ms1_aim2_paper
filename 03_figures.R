@@ -9,23 +9,14 @@ set_theme(theme_bw())
 theme_update(plot.title = element_text(hjust = 0.5),
              plot.subtitle = element_text(hjust = 0.5))
 
+# Load helper functions
+source("helper_functions.R")
+
 # Load models
 list_city_df <- readRDS("data/list_city_df.rds")
 list_city_model <- readRDS("models/list_city_model.rds")
 list_city_int_model <- readRDS("models/list_city_int_model.rds")
 df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
-
-# Labeller
-label_nbhd_change <- c("Low Edu", "Low Green", "Low Green Low Edu")
-label_nbhd_type   <- c("Low Green Low Edu", "Low Green High Edu", "High Green Low Edu", "High Green High Edu")
-
-convert_to_label <- function(string, label_order) {
-  string |> 
-    str_replace_all("_", " ") |> 
-    str_to_title() |> 
-    factor(levels = label_order)
-  
-}
 
 
 # Ratio of RRs ------------------------------------------------------------
