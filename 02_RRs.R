@@ -1,6 +1,7 @@
 library(tidyverse)
 library(glue)
 library(gnm); library(dlnm); library(splines)
+library(SALURhelper)
 
 # Load models
 list_city_model <- readRDS("models/list_city_model.rds")
