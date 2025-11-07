@@ -1,6 +1,8 @@
 library(tidyverse)
 library(glue)
 
+source("helper_functions.R")
+
 
 # Import and format data --------------------------------------------------
 
@@ -56,7 +58,7 @@ list_df_city <- list_df_city |>
     bind_cols(df_city, df_dummy_vars)
   })
 
-# Create list of dfs with 1 row per nbhd
+# Create list of dfs of nbhd types with 1 row per nbhd
 list_df_city_nbhd <- 
   list_df_city |> 
   map(\(df_city) {
