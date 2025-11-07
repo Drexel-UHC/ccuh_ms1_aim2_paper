@@ -77,4 +77,4 @@ df_RR_ratio <-
           low_edu           = RR_ratio_est(fit_high_green_low_edu, fit_high_green_high_edu, se_high_green_low_edu, se_high_green_high_edu),
           .by = city_name)
 
-write_csv(df_RR_ratio, "results/RR_p99_ratio.csv")
+write_csv(df_RR_ratio, "results/RR_ratio_p99.csv")
