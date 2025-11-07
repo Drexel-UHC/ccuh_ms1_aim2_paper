@@ -5,7 +5,7 @@ library(SALURhelper)
 
 
 # Load data
-list_city_df <- readRDS("data/list_city_df.rds")
+list_df_city <- readRDS("data/list_df_city.rds")
 
 
 # Fit base models ---------------------------------------------------------
@@ -15,7 +15,7 @@ n_lag <- 21
 knot_quantiles <- c(.1, .75, .9)
 
 # Fit overall models
-list_city_model <- list_city_df |> 
+list_model_city <- list_df_city |> 
   map(\(df_city) {
     
     # Specify knots placement
@@ -56,15 +56,15 @@ list_city_model <- list_city_df |>
   })
 
 
-saveRDS(list_city_model, "models/list_city_model.rds")
+saveRDS(list_model_city, "models/list_model_city.rds")
 
 
 # Fit interaction model (1 factor of 4 levels) ----------------------------
 
 # Fit interaction models
-list_city_int_model <- 
-  pmap(list(df_city = list_city_df,
-            model_city = list_city_model),
+list_model_city_int <- 
+  pmap(list(df_city = list_df_city,
+            model_city = list_model_city),
        \(df_city, model_city) {
          
          # Fit initial model
@@ -99,18 +99,18 @@ list_city_int_model <-
              })
          
          # Fit interaction models & extract coefs & vcovs
-         list_int_model <- 
+         list_model_int <- 
            list_int_formula |> 
            map(\(int_formula) {
              # Fit interaction model
-             city_int_model <- update(model, int_formula)
+             model_city_int <- update(model, int_formula)
              
              # Extract reference group's coefs & associated vcov
-             list(coef = coef(city_int_model)[1:n_coef],
-                  vcov = vcov(city_int_model)[1:n_coef, 1:n_coef],
-                  link = city_int_model$family$link)
+             list(coef = coef(model_city_int)[1:n_coef],
+                  vcov = vcov(model_city_int)[1:n_coef, 1:n_coef],
+                  link = model_city_int$family$link)
            })
          
        }, .progress = TRUE)
 
-saveRDS(list_city_int_model, "models/list_city_int_model.rds")
+saveRDS(list_model_city_int, "models/list_model_city_int.rds")

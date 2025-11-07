@@ -13,9 +13,9 @@ theme_update(plot.title = element_text(hjust = 0.5),
 source("helper_functions.R")
 
 # Load models
-list_city_df <- readRDS("data/list_city_df.rds")
-list_city_model <- readRDS("models/list_city_model.rds")
-list_city_int_model <- readRDS("models/list_city_int_model.rds")
+list_df_city <- readRDS("data/list_df_city.rds")
+list_model_city <- readRDS("models/list_model_city.rds")
+list_model_city_int <- readRDS("models/list_model_city_int.rds")
 df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
 
 
@@ -42,17 +42,17 @@ ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 25, height = 10)
 # Overall city curves -----------------------------------------------------
 
 # Get overall RRs at values of pred_seq
-list_city_pred <- list_city_model |> 
-  map(\(city_model) {
+list_city_pred <- list_model_city |> 
+  map(\(model_city) {
     
     # Estimate RRs at 99th temperature percentile
     city_pred <- 
-      crossreduce(city_model$cbt,
-                  coef = city_model$coef,
-                  vcov = city_model$vcov,
-                  model.link = city_model$link,
-                  at = city_model$pred_seq,
-                  cen = city_model$p75) # Can change between p75 and MMT
+      crossreduce(model_city$cbt,
+                  coef = model_city$coef,
+                  vcov = model_city$vcov,
+                  model.link = model_city$link,
+                  at = model_city$pred_seq,
+                  cen = model_city$p75) # Can change between p75 and MMT
     
     # Format df to return
     get_df_RRs(city_pred)
@@ -65,8 +65,8 @@ y_lims <- list_city_pred |>
   range()
 
 # Temperature mortality curve plots
-list_TMC_plot <- 
-  pmap(list(list_city_pred, list_city_df, names(list_city_df)),
+list_plot_TMC <- 
+  pmap(list(list_city_pred, list_df_city, names(list_df_city)),
        \(city_pred, df_city, city_name) {
          
          x_lims <- range(df_city$popwt_temp)
@@ -98,7 +98,7 @@ list_TMC_plot <-
      })
 
 
-wrap_plots(list_TMC_plot, nrow = 2)
+wrap_plots(list_plot_TMC, nrow = 2)
 
 ggsave("sup_results/figure_TMC_overall.pdf", units = "cm", width = 30, height = 25)
 
@@ -106,21 +106,21 @@ ggsave("sup_results/figure_TMC_overall.pdf", units = "cm", width = 30, height = 
 # Neighborhood type city curves -------------------------------------------
 
 # Get interaction RRs at values of pred_seq
-list_city_int_pred <-
-  map2(list_city_model, list_city_int_model,
-       \(city_model, city_int_model) {
+list_pred_city_int <-
+  map2(list_model_city, list_model_city_int,
+       \(model_city, model_city_int) {
          
          # Estimate RRs at 99th temperature percentile for each nbhd type
-         df_city_int_pred <- city_int_model |> 
+         df_pred_city_int <- model_city_int |> 
            map(\(nbhd_type_model) {
              city_pred <- 
                # Use coef & vcov from interaction model instead of overall model
-               crossreduce(city_model$cbt,
+               crossreduce(model_city$cbt,
                            coef = nbhd_type_model$coef,
                            vcov = nbhd_type_model$vcov,
                            model.link = nbhd_type_model$link,
-                           at = city_model$pred_seq,
-                           cen = city_model$p75) 
+                           at = model_city$pred_seq,
+                           cen = model_city$p75) 
              
              # Format df to return
              get_df_RRs(city_pred)
@@ -129,14 +129,14 @@ list_city_int_pred <-
        })
 
 # Temperature mortality curve plots
-list_TMC_int_plot <- 
-  pmap(list(list_city_int_pred, list_city_df, names(list_city_df)),
-       \(city_int_pred, df_city, city_name) {
+list_plot_TMC_int <- 
+  pmap(list(list_pred_city_int, list_df_city, names(list_df_city)),
+       \(pred_city_int, df_city, city_name) {
          
          x_lims <- range(df_city$popwt_temp)
          
          # Overall curve TMC
-         p1 <- city_int_pred |> 
+         p1 <- pred_city_int |> 
            mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type)) |> 
            ggplot(aes(exposure, color = nbhd_type, fill = nbhd_type)) +
            geom_ribbon(aes(ymin = RR_low, ymax = RR_high), alpha = .2) +
@@ -164,6 +164,6 @@ list_TMC_int_plot <-
          p1 / p2
        })
 
-wrap_plots(list_TMC_int_plot, nrow = 2, guides = "collect")
+wrap_plots(list_plot_TMC_int, nrow = 2, guides = "collect")
 
 ggsave("sup_results/figure_TMC_nbhd_type.pdf", units = "cm", width = 30, height = 25)

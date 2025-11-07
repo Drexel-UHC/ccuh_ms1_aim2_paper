@@ -7,23 +7,23 @@ library(SALURhelper)
 source("helper_functions.R")
 
 # Load models
-list_city_model <- readRDS("models/list_city_model.rds")
-list_city_int_model <- readRDS("models/list_city_int_model.rds")
+list_model_city <- readRDS("models/list_model_city.rds")
+list_model_city_int <- readRDS("models/list_model_city_int.rds")
 
 # Predictions for overall curve -------------------------------------------
 
 # Get overall RRs at 99th percentile
-df_pred <- list_city_model |> 
-  map(\(city_model) {
+df_pred <- list_model_city |> 
+  map(\(model_city) {
     
     # Estimate RRs at 99th temperature percentile
     city_pred <- 
-      crossreduce(city_model$cbt,
-                  coef = city_model$coef,
-                  vcov = city_model$vcov,
-                  model.link = city_model$link,
-                  at = city_model$p99,
-                  cen = city_model$p75) # Can change between p75 and MMT
+      crossreduce(model_city$cbt,
+                  coef = model_city$coef,
+                  vcov = model_city$vcov,
+                  model.link = model_city$link,
+                  at = model_city$p99,
+                  cen = model_city$p75) # Can change between p75 and MMT
     
     # Format df to return
     get_df_RRs(city_pred)
@@ -36,21 +36,21 @@ write_csv(df_pred, "results/RR_p99_overall.csv")
 # Predictions for neighborhood types --------------------------------------
 
 # Get RRs at 99th percentile for each neighborhood type
-df_int_pred <- 
-  map2(list_city_model, list_city_int_model,
-       \(city_model, city_int_model) {
+df_pred_int <- 
+  map2(list_model_city, list_model_city_int,
+       \(model_city, model_city_int) {
          
          # Estimate RRs at 99th temperature percentile for each nbhd type
-         df_city_int_pred <- city_int_model |> 
+         df_city_pred_int <- model_city_int |> 
            map(\(nbhd_type_model) {
              city_pred <- 
                # Use coef & vcov from interaction model instead of overall model
-               crossreduce(city_model$cbt,
+               crossreduce(model_city$cbt,
                            coef = nbhd_type_model$coef,
                            vcov = nbhd_type_model$vcov,
                            model.link = nbhd_type_model$link,
-                           at = city_model$p99,
-                           cen = city_model$p75) 
+                           at = model_city$p99,
+                           cen = model_city$p75) 
              
              # Format df to return
              get_df_RRs(city_pred)
@@ -59,14 +59,14 @@ df_int_pred <-
        }) |> 
   list_rbind(names_to = "city_name")
 
-write_csv(df_int_pred, "results/RR_p99_interaction.csv")
+write_csv(df_pred_int, "results/RR_p99_interaction.csv")
 
 
 # Get ratio of RRs --------------------------------------------------------
 
 # Calculate ratio of RRs
 df_RR_ratio <- 
-  df_int_pred |> 
+  df_pred_int |> 
   pivot_wider(names_from = nbhd_type,
               names_glue = "{.value}_{nbhd_type}",
               values_from = c(fit, se), 

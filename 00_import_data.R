@@ -10,7 +10,7 @@ df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-se
   dplyr::collect()
 
 # Create list of data frames by city
-list_city_df <- 
+list_df_city <- 
   df_data_age |> 
   split(df_data_age$city_name) |>
   discard_at(c("Belo Horizonte", "Campinas")) |>
@@ -32,7 +32,7 @@ names_nbhd_type <- c("low_green_low_edu",
                      "high_green_high_edu")
 
 # Define neighborhoods by type per city
-list_city_df <- list_city_df |> 
+list_df_city <- list_df_city |> 
   map(\(df_city) {
     # Cutoff values for nbhd definitions
     cutoff_grn <- median(df_city$pct_green)
@@ -56,8 +56,17 @@ list_city_df <- list_city_df |>
     bind_cols(df_city, df_dummy_vars)
   })
 
+# Create list of dfs with 1 row per nbhd
+list_df_city_nbhd <- 
+  list_df_city |> 
+  map(\(df_city) {
+    df_city |> 
+      summarize(nbhd_type = first(nbhd_type), .by = nbhd_geoid) |> 
+      mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type))
+  })
 
 # Save final list of data frames ------------------------------------------
 
 # Save formatted list of dfs
-saveRDS(list_city_df, "data/list_city_df.rds")
+saveRDS(list_df_city, "data/list_df_city.rds")
+saveRDS(list_df_city_nbhd, "data/list_df_city_nbhd.rds")

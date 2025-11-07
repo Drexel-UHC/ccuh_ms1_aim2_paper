@@ -18,14 +18,8 @@ theme_update(plot.title = element_text(hjust = 0.5),
 # Load helper functions
 source("helper_functions.R")
 
-# Load data and get nbhd_type for each nbhd_geoid
-list_city_df_nbhd <- 
-  readRDS("data/list_city_df.rds") |> 
-  map(\(df_city) {
-    df_city |> 
-      summarize(nbhd_type = first(nbhd_type), .by = nbhd_geoid) |> 
-      mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type))
-  })
+# Load data of nbhd_type for each nbhd_geoid
+list_df_city_nbhd <- readRDS("data/list_df_city_nbhd.rds")
 
 
 # Extract spatial boundaries ----------------------------------------------
@@ -52,10 +46,10 @@ list_sf <- list(gua_sf, pan_sf, phl_sf, rio_sf, sao_sf)
 
 # Create spatial plots ----------------------------------------------------
 
-list_spatial_plots <- 
+list_plot_spatial <- 
   pmap(list(sf = list_sf,
-            df = list_city_df_nbhd,
-            city_name = names(list_city_df_nbhd)), 
+            df = list_df_city_nbhd,
+            city_name = names(list_df_city_nbhd)), 
        \(sf, df, city_name) {
          sf |> 
            left_join(df, by = "nbhd_geoid") |> 
@@ -66,6 +60,6 @@ list_spatial_plots <-
            labs(title = city_name, fill = "Neighborhood Type")
        })
 
-wrap_plots(list_spatial_plots, guides = "collect", heights = 1, widths = 1)
+wrap_plots(list_plot_spatial, guides = "collect", heights = 1, widths = 1)
 
-ggsave("results/figures_spatial_plots.pdf", units = "cm", width = 30, height = 15)
+ggsave("results/figures_spatial.pdf", units = "cm", width = 30, height = 15)
