@@ -42,11 +42,11 @@ ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 25, height = 10)
 # Overall city curves -----------------------------------------------------
 
 # Get overall RRs at values of pred_seq
-list_city_pred <- list_model_city |> 
+list_pred_city <- list_model_city |> 
   map(\(model_city) {
     
     # Estimate RRs at 99th temperature percentile
-    city_pred <- 
+    pred_city <- 
       crossreduce(model_city$cbt,
                   coef = model_city$coef,
                   vcov = model_city$vcov,
@@ -55,24 +55,24 @@ list_city_pred <- list_model_city |>
                   cen = model_city$p75) # Can change between p75 and MMT
     
     # Format df to return
-    get_df_RRs(city_pred)
+    get_df_RRs(pred_city)
   })
 
 # Get min & max RR for all cities for fixed y-axis
-y_lims <- list_city_pred |> 
+y_lims <- list_pred_city |> 
   map(\(x) range(c(x$RR_low, x$RR_high))) |> 
   unlist() |> 
   range()
 
 # Temperature mortality curve plots
 list_plot_TMC <- 
-  pmap(list(list_city_pred, list_df_city, names(list_df_city)),
-       \(city_pred, df_city, city_name) {
+  pmap(list(list_pred_city, list_df_city, names(list_df_city)),
+       \(pred_city, df_city, city_name) {
          
          x_lims <- range(df_city$popwt_temp)
        
          # Overall curve TMC
-         p1 <- city_pred |> 
+         p1 <- pred_city |> 
            ggplot(aes(exposure)) +
            geom_ribbon(aes(ymin = RR_low, ymax = RR_high), alpha = .2) +
            geom_line(aes(y = RR)) +
@@ -113,7 +113,7 @@ list_pred_city_int <-
          # Estimate RRs at 99th temperature percentile for each nbhd type
          df_pred_city_int <- model_city_int |> 
            map(\(nbhd_type_model) {
-             city_pred <- 
+             pred_city <- 
                # Use coef & vcov from interaction model instead of overall model
                crossreduce(model_city$cbt,
                            coef = nbhd_type_model$coef,
@@ -123,7 +123,7 @@ list_pred_city_int <-
                            cen = model_city$p75) 
              
              # Format df to return
-             get_df_RRs(city_pred)
+             get_df_RRs(pred_city)
            }) |> 
            list_rbind(names_to = "nbhd_type")
        })
