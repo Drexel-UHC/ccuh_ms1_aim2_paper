@@ -4,10 +4,8 @@ library(glue)
 library(SALURhelper)
 
 # Spatial Libraries
-library(arrow)
-library(geoarrow)
 library(sf)
-library(leaflet)
+library(geoarrow)
 
 # ggplot2 theme
 set_theme(theme_bw())
