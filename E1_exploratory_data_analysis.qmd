@@ -173,7 +173,7 @@ wrap_plots(map(list_cor_plots, \(x) x$cor2), ncol = 2)
 #| fig-height: 6
 
 
-# Display pop_desnity and pct_educated
+# Display pop_density and pct_educated
 wrap_plots(map(list_cor_plots, \(x) x$cor3), ncol = 2)
 ```
 
