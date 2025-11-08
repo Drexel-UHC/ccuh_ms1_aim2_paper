@@ -13,6 +13,7 @@ list_df_city <- readRDS("data/list_df_city.rds")
 # Specify model parameters
 n_lag <- 21
 knot_quantiles <- c(.1, .75, .9)
+n_lag_knots <- 3
 
 # Fit overall models
 list_model_city <- list_df_city |> 
@@ -20,8 +21,8 @@ list_model_city <- list_df_city |>
     
     # Specify knots placement
     var_knots <- quantile(df_city$popwt_temp, knot_quantiles, na.rm = TRUE)
-    lag_knots <- logknots(n_lag, nk = 3)
-    
+    lag_knots <- logknots(n_lag, nk = n_lag_knots)
+
     # Sequence of exposures for crosspred `at` parameter
     pred_seq <- seq(min(df_city$popwt_temp), 
                     max(df_city$popwt_temp),
