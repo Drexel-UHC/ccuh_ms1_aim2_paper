@@ -7,8 +7,10 @@ source("helper_functions.R")
 # Import and format data --------------------------------------------------
 
 # Load data
+# keep philadelphia core only
 df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |>
   arrow::open_dataset() |>
+  filter(city_name == "Philadelphia PA Metro", grepl("DSPH", nbhd_geoid)) |>
   dplyr::collect()
 
 # Create list of data frames by city
