@@ -50,17 +50,10 @@ list_df_city <- list_df_city |>
     df_city <- df_city |>
       mutate(
         nbhd_type = case_when(
-          pct_green < cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[
-            1
-          ],
-          pct_green < cutoff_grn & pct_educated >= cutoff_edu ~ names_nbhd_type[
-            2
-          ],
-          pct_green >= cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[
-            3
-          ],
-          pct_green >= cutoff_grn &
-            pct_educated >= cutoff_edu ~ names_nbhd_type[4],
+          pct_green < cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[1],
+          pct_green < cutoff_grn & pct_educated >= cutoff_edu ~ names_nbhd_type[2],
+          pct_green >= cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[3],
+          pct_green >= cutoff_grn & pct_educated >= cutoff_edu ~ names_nbhd_type[4],
           .default = "None"
         ) |>
           factor(levels = names_nbhd_type)
