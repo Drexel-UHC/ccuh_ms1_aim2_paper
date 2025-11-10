@@ -124,7 +124,8 @@ list_model_city_int <-
           list(
             coef = coef(model_city_int)[1:n_coef],
             vcov = vcov(model_city_int)[1:n_coef, 1:n_coef],
-            link = model_city_int$family$link
+            link = model_city_int$family$link,
+            formula = int_formula
           )
         })
     },
@@ -132,3 +133,70 @@ list_model_city_int <-
   )
 
 saveRDS(list_model_city_int, "models/list_model_city_int.rds")
+
+
+# Fit interaction model (2 factors of 2 levels) ---------------------------
+
+
+# Fit interaction models
+list_model_city_int <-
+  pmap(
+    list(df_city = list_df_city, model_city = list_model_city),
+    \(df_city, model_city) {
+      
+      # Fit initial model
+      model <- gnm(
+        death ~ model_city$cbt,
+        family = quasipoisson,
+        eliminate = strata,
+        data = df_city
+      )
+      
+      # Number of coefficients to extract
+      n_coef <- ncol(model_city$cbt)
+      
+      # Specify interaction cross-bases
+      cb_lg <- model_city$cbt * (df_city$low_green_low_edu  + df_city$low_green_high_edu)
+      cb_hg <- model_city$cbt * (df_city$high_green_low_edu + df_city$high_green_high_edu)
+      cb_le <- model_city$cbt * (df_city$low_green_low_edu  + df_city$high_green_low_edu)
+      cb_he <- model_city$cbt * (df_city$low_green_high_edu + df_city$high_green_high_edu)
+      
+      vec_int_terms <- c("cb_lg", "cb_hg", "cb_le", "cb_he")
+      
+      # Specify interaction model formulas
+      list_int_formula <-
+        list(
+          low_green_low_edu = "cb_lg|cb_le",
+          low_green_high_edu = "cb_lg|cb_he",
+          high_green_low_edu = "cb_hg|cb_le",
+          high_green_high_edu = "cb_hg|cb_he"
+        ) |>
+        map(\(x) {
+          # Extract all terms except the reference group
+          int_terms <- str_subset(vec_int_terms, x, negate = TRUE) |>
+            paste(collapse = " + ")
+          
+          # Create formula
+          glue(". ~ . + {int_terms}") |> as.formula()
+        })
+      
+      # Fit interaction models & extract coefs & vcovs
+      list_model_int <-
+        list_int_formula |>
+        map(\(int_formula) {
+          # Fit interaction model
+          model_city_int <- update(model, int_formula)
+          
+          # Extract reference group's coefs & associated vcov
+          list(
+            coef = coef(model_city_int)[1:n_coef],
+            vcov = vcov(model_city_int)[1:n_coef, 1:n_coef],
+            link = model_city_int$family$link,
+            formula = int_formula
+          )
+        })
+    },
+    .progress = TRUE
+  )
+
+saveRDS(list_model_city_int, "models/list_model_city_int_2x2.rds")
