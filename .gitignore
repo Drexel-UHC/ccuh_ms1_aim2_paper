@@ -8,3 +8,7 @@
 *.rds
 *.docx
 .Rproj*
+data/
+models/
+results/
+sup_results/

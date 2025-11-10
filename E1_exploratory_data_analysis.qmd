@@ -1,0 +1,297 @@
+---
+title: "Exploratory Data Analysis for CCUH Aim 2 Paper"
+author: Derek Weix
+format: 
+  html:
+    theme: cosmo
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-location: left
+    code-fold: true
+    page-layout: full
+    embed-resources: true
+editor: source
+warning: false
+#cache: true
+cache.lazy: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Set Up
+
+```{r}
+# Libraries
+library("tidyverse")
+library("gt")
+library("here")
+library("patchwork")
+library("lubridate")
+library("glue")
+library("dlnm"); library("gnm")
+
+# ggplot2 theming
+theme_set(theme_classic())
+theme_update(plot.title = element_text(hjust = 0.5),
+             plot.subtitle = element_text(hjust = 0.5),
+             strip.background = element_blank(),
+             strip.text = element_text(size = 12))
+```
+
+```{r}
+#| code-summary: "Read in the data."
+
+# Get base data
+df <- read_csv(here("data", "merged_data_by_age.csv")) |> 
+  filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
+
+# Data frame with only unique entries of modifiers
+df1 <- df |> 
+  select(!c(age_category, year, date, death, popwt_temp)) |> 
+  summarize(across(everything(), first), .by = nbhd_geoid)
+
+glimpse(df)
+glimpse(df1)
+```
+
+
+# Exploratory Data Analysis
+
+```{r}
+#| code-summary: "Create count table."
+
+df |> 
+  summarize(across(everything(), n_distinct), .by = city_name) |> 
+  select(-c(city_geoid, iso2)) |> 
+  gt() |> 
+  tab_header(title = "Unique Observations for Each City")
+```
+
+```{r}
+#| code-summary: "Histograms of variable values per day by city."
+#| fig-width: 12
+#| fig-height: 4
+
+make_histogram <- function(variable = "death") {
+  df |>  
+    slice_sample(n = 10000, by = c(age_category, city_name)) |> 
+    ggplot(aes(!!sym(variable), fill = age_category)) +
+    geom_histogram() +
+    scale_y_continuous(labels = \(x) {x/1000}) +
+    facet_grid(age_category ~ city_name) 
+}
+
+make_histogram("death")
+
+make_histogram("popwt_temp")
+
+make_histogram("pct_green")
+
+make_histogram("pct_primary")
+
+make_histogram("pop_density")
+
+```
+
+```{r}
+#| code-summary: "Bar chart."
+#| fig-width: 8
+#| fig-height: 4
+
+df |> 
+  summarize(death = sum(death), .by = age_category) |> 
+  ggplot(aes(age_category, death)) +
+  geom_col() +
+  labs(x = "Age Category", y = "Total Deaths", title = "Deaths by Age Category")
+```
+
+```{r}
+#| code-summary: "Correlation plots of modifiers."
+#| fig-width: 8
+#| fig-height: 6
+
+# Basic Pair Plots
+df1 |> 
+  select(pct_green, pct_primary, pop_density) |> 
+  GGally::ggpairs()
+
+# Pair Plots with Color by Country
+df1 |> 
+  GGally::ggpairs(columns = c("pct_green", "pct_primary", "pop_density"), 
+                  aes(color = iso2, alpha = .2))
+
+# Pair Plots with Color by City
+df1 |> 
+  GGally::ggpairs(columns = c("pct_green", "pct_primary", "pop_density"), 
+                  aes(color = city_name, alpha = .2))
+```
+
+```{r}
+#| code-summary: "Correlation plots."
+#| fig-width: 8
+#| fig-height: 6
+
+# Create plots
+list_cor_plots <-
+  pmap(list(name = city_names,
+            df = list_df),
+       \(name, df) {
+         map2(c("pct_green",   "pct_green",    "pct_educated"), 
+              c("pop_density", "pct_educated", "pop_density"),
+              \(var1, var2) {
+                df |>
+                  summarize(across(everything(), first), .by = c(nbhd_geoid)) |>
+                  ggplot(aes(.data[[var1]], .data[[var2]])) +
+                  geom_point() +
+                  geom_smooth(method = "lm", se = FALSE) +
+                  ggpubr::stat_cor(label.x = 80, aes(label = after_stat(r.label))) +
+                  scale_x_continuous(limits = c(0, 100)) +
+                  labs(title = name, x = var_names[[var1]], y = var_names[[var2]])
+              }) |> set_names(c("cor1", "cor2", "cor3"))
+  })
+
+
+
+# Display pct_green and pop_density
+wrap_plots(map(list_cor_plots, \(x) x$cor1), ncol = 2)
+```
+
+```{r}
+#| code-summary: "Correlation plots."
+#| fig-width: 8
+#| fig-height: 6
+
+
+# Display pct_green and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor2), ncol = 2)
+```
+
+```{r}
+#| code-summary: "Correlation plots."
+#| fig-width: 8
+#| fig-height: 6
+
+
+# Display pop_density and pct_educated
+wrap_plots(map(list_cor_plots, \(x) x$cor3), ncol = 2)
+```
+
+
+
+```{r}
+#| code-summary: "Scatter plot of modifiers and death."
+#| fig-width: 8
+#| fig-height: 2
+
+# Association of Modifiers with Death
+df2 <- df |> drop_na()
+n_sample <- 10000
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(pct_green, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(pct_primary, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(pop_density, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+
+df2 |> 
+  slice_sample(n = n_sample) |> 
+  ggplot(aes(popwt_temp, death, fill = age_category)) +
+  geom_jitter(shape = 21)
+```
+
+# Spatial Plots
+```{r}
+#| code-summary: "Generate spatial plots."
+
+spatial_plot <- function(sf, variable, color_direction = 1) {
+  fill_range <- range(df_nbhd_meta[[variable]])
+  city_name <- sf$city_name
+  
+  sf |> 
+    left_join(df_nbhd_meta, by = "nbhd_geoid") |> 
+    ggplot(aes(fill = !!sym(variable))) +
+    geom_sf() +
+    scale_fill_viridis_c(limits = fill_range, direction = color_direction) +
+    labs(title = city_name)
+}
+
+create_plots <- function(variable, color_direction = 1) {
+  spatial_plot(phl_sf, variable, color_direction) + 
+    spatial_plot(rio_sf, variable, color_direction) + 
+    spatial_plot(sao_sf, variable, color_direction) + 
+    spatial_plot(gua_sf, variable, color_direction) + 
+    spatial_plot(pan_sf, variable, color_direction) +
+    plot_layout(guides = "collect") 
+}
+```
+
+## Percent Greenspace
+```{r}
+#| code-summary: "Percent Greenspace"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("pct_green")   & labs(fill = "Greenspace %")
+```
+
+## Percent of Population that Finish Primary School
+```{r}
+#| code-summary: "Percent Primary"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("pct_primary") & labs(fill = "Completed Primary\nEducation %")
+
+```
+
+## Population Density
+```{r}
+#| code-summary: "Population Density"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("pop_density", color_direction = -1) & labs(fill = "Population\nDensity")
+```
+
+```{r}
+#| code-summary: "log(Population Density)"
+#| fig-width: 12
+#| fig-height: 8
+#| 
+create_plots("log_pop_density", color_direction = -1) & labs(fill = "Population\nDensity (log)")
+```
+
+## Total Deaths
+```{r}
+#| code-summary: "Total Deaths"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("nbhd_death") & labs(fill = "Total Deaths")
+```
+
+```{r}
+#| code-summary: "log(Total Deaths)"
+#| fig-width: 12
+#| fig-height: 8
+create_plots("log_nbhd_death") & labs(fill = "Total Deaths (log)")
+```
+
+```{r}
+#| code-summary: "Ratio of Death 65 and over versus 64 and under"
+#| fig-width: 12
+#| fig-height: 8
+
+create_plots("nbhd_death_ratio") & labs(fill = "Deaths 65+\nover\nDeath 0-64")
+```
+
