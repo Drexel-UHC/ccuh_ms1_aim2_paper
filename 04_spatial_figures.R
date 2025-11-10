@@ -64,6 +64,7 @@ list_plot_spatial <-
     \(sf, df, city_name) {
       sf |>
         left_join(df, by = "nbhd_geoid") |>
+        filter(!is.na(nbhd_type)) |>
         ggplot(aes(fill = nbhd_type)) +
         geom_sf() +
         scale_fill_brewer(type = "qual", drop = FALSE) +
