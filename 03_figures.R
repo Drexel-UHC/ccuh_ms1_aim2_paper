@@ -62,17 +62,24 @@ list_pred_city <- list_model_city |>
     get_df_RRs(pred_city)
   })
 
-# Get min & max RR for all cities for fixed y-axis
+# Get fixed limits for x & y axis
 y_lims <- list_pred_city |>
   map(\(x) range(c(x$RR_low, x$RR_high))) |>
   unlist() |>
   range()
+
+# x_lims <- list_pred_city |> 
+#   map(\(x) range(c(x$exposure, x$exposure))) |> 
+#   unlist() |> 
+#   range()
 
 # Temperature mortality curve plots
 list_plot_TMC <-
   pmap(
     list(list_pred_city, list_df_city, names(list_df_city)),
     \(pred_city, df_city, city_name) {
+      # Get city specific limits for x & y axis
+      #y_lims <- range(c(pred_city$RR_low, pred_city$RR_high))
       x_lims <- range(df_city$popwt_temp)
 
       # Overall curve TMC
