@@ -73,7 +73,7 @@ list_df_city_nbhd <-
   list_df_city |>
   map(\(df_city) {
     df_city |>
-      summarize(nbhd_type = first(nbhd_type), .by = nbhd_geoid) |>
+      summarize(across(contains(c("pct_", "nbhd_type")), first), .by = nbhd_geoid) |>
       mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type))
   })
 
