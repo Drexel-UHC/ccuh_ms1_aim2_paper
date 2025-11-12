@@ -20,7 +20,7 @@ source("helper_functions.R")
 list_df_city <- readRDS("data/list_df_city.rds")
 list_model_city <- readRDS("models/list_model_city.rds")
 list_model_city_int <- readRDS("models/list_model_city_int.rds")
-df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
+df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
 
 
 # Ratio of RRs ------------------------------------------------------------
