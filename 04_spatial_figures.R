@@ -11,8 +11,7 @@ library(geoarrow)
 set_theme(theme_bw())
 theme_update(
   plot.title = element_text(hjust = 0.5),
-  plot.subtitle = element_text(hjust = 0.5),
-  legend.title = element_text(hjust = 0.5)
+  plot.subtitle = element_text(hjust = 0.5)
 )
 
 # Load helper functions
@@ -54,6 +53,7 @@ list_sf <- list(gua_sf, pan_sf, phl_sf, rio_sf, sao_sf)
 
 # Create spatial plots ----------------------------------------------------
 
+# Create list of spatial plots
 list_plot_spatial <-
   pmap(
     list(
@@ -72,6 +72,14 @@ list_plot_spatial <-
     }
   )
 
-wrap_plots(list_plot_spatial, guides = "collect", heights = 1, widths = 1)
+# Specify plot layout
+design <- "ABC
+           DDE"
 
+# Render plots
+wrap_plots(list_plot_spatial, 
+           widths = c(1, 1, 1), heights = c(1, 1), 
+           design = design, guides = "collect")
+
+# Save pltos
 ggsave("results/figures_spatial.pdf", units = "cm", width = 30, height = 15)
