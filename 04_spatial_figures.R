@@ -51,10 +51,19 @@ pan_sf <- df_salurbal_nbhd |>
 list_sf <- list(gua_sf, pan_sf, phl_sf, rio_sf, sao_sf)
 
 
-# Create spatial plots ----------------------------------------------------
 
-# Create list of spatial plots
-list_plot_spatial <-
+# Spatial plots specification ---------------------------------------------
+
+create_list_plot_spatial <- function(fill_var = "nbhd_type") {
+  
+  # Create fill label for legend
+  fill_lab <- case_when(
+    fill_var == "nbhd_type" ~ "Neighborhood Type",
+    fill_var == "pct_green" ~ "% Greenspace",
+    fill_var == "pct_educated" ~ "% Educated"
+    )
+  
+  # Map over each city
   pmap(
     list(
       sf = list_sf,
@@ -62,24 +71,59 @@ list_plot_spatial <-
       city_name = names(list_df_city_nbhd)
     ),
     \(sf, df, city_name) {
+      
+      # Create plot with spatial boundaries
       sf |>
         left_join(df, by = "nbhd_geoid") |>
-        ggplot(aes(fill = nbhd_type)) +
+        ggplot(aes(fill = .data[[fill_var]])) +
         geom_sf() +
-        scale_fill_brewer(type = "qual", drop = FALSE) +
+        # Check if fill scale is discrete or continuous
+        {if(fill_var == "nbhd_type") scale_fill_brewer(type = "qual", drop = FALSE)
+         else scale_fill_viridis_c(limits = c(0, 100))} +
         theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
-        labs(title = city_name, fill = "Neighborhood Type")
+        labs(title = city_name, fill = fill_lab)
     }
   )
+}
 
 # Specify plot layout
 design <- "ABC
            DDE"
 
+widths <- c(1, 1, 1)
+heights <- c(1, 1)
+
+# Specify size of saved figure
+f_width <- 30
+f_height <- 15
+
+
+# Spatial plots of neighborhood type --------------------------------------
+
 # Render plots
-wrap_plots(list_plot_spatial, 
-           widths = c(1, 1, 1), heights = c(1, 1), 
+wrap_plots(create_list_plot_spatial("nbhd_type"), 
+           widths = widths, heights = heights, 
            design = design, guides = "collect")
 
-# Save pltos
-ggsave("results/figures_spatial.pdf", units = "cm", width = 30, height = 15)
+# Save plots
+ggsave("results/figures_spatial.pdf", units = "cm", width = f_width, height = f_height)
+
+
+
+# Spatial plots of continuous variables -----------------------------------
+
+# Render plots
+wrap_plots(create_list_plot_spatial("pct_green"), 
+           widths = widths, heights = heights, 
+           design = design, guides = "collect")
+
+# Save plots
+ggsave("sup_results/figures_spatial_green.pdf", units = "cm", width = f_width, height = f_height)
+
+# Render plots
+wrap_plots(create_list_plot_spatial("pct_educated"), 
+           widths = widths, heights = heights, 
+           design = design, guides = "collect")
+
+# Save plots
+ggsave("sup_results/figures_spatial_edu.pdf", units = "cm", width = f_width, height = f_height)
