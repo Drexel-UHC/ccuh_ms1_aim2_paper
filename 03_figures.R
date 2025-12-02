@@ -38,12 +38,12 @@ df_RR |>
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
   labs(color = "", x = "", y = "RRs")
 
-ggsave("results/figure_RRs.pdf", units = "cm", width = 25, height = 10)
+ggsave("results/figure_RRs.pdf", units = "cm", width = 35, height = 10)
 
 # Ratio of RRs ------------------------------------------------------------
 
 df_RR_ratio |>
-  filter(!(city_name %in% c("Guatemala City", "Panama City"))) |>
+  #filter(!(city_name %in% c("Guatemala City", "Panama City"))) |>
   pivot_longer(contains("low_")) |>
   pivot_wider(values_from = value, names_from = estimate) |>
   mutate(name = convert_to_label(name, label_nbhd_change)) |>
@@ -53,11 +53,11 @@ df_RR_ratio |>
   geom_point(aes(y = RR_ratio), size = 3) +
   coord_transform(y = "log") +
   scale_color_brewer(palette = "Dark2", direction = -1) +
-  facet_wrap(~city_name, ncol = 5) +
+  facet_wrap(~ city_name, ncol = 5) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
   labs(color = "", x = "", y = "Ratio RRs")
 
-ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 25, height = 10)
+ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 35, height = 10)
 
 # Overall city curves -----------------------------------------------------
 
