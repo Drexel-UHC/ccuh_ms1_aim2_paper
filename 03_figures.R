@@ -20,8 +20,25 @@ source("helper_functions.R")
 list_df_city <- readRDS("data/list_df_city.rds")
 list_model_city <- readRDS("models/list_model_city.rds")
 list_model_city_int <- readRDS("models/list_model_city_int.rds")
+df_RR <- read_csv("results/RR_p99_interaction.csv")
 df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
 
+
+# RRs ---------------------------------------------------------------------
+
+df_RR |> 
+  mutate(nbhd_type = convert_to_label(nbhd_type)) |>
+  ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
+  geom_hline(yintercept = 1) +
+  geom_point() +
+  geom_errorbar(aes(ymin = RR_low, ymax = RR_high), width = .5) +
+  coord_transform(y = "log") +
+  scale_color_brewer(palette = "Dark2", direction = -1) +
+  facet_wrap(~ city_name, ncol = 5) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  labs(color = "", x = "", y = "RRs")
+
+ggsave("results/figure_RRs.pdf", units = "cm", width = 25, height = 10)
 
 # Ratio of RRs ------------------------------------------------------------
 
