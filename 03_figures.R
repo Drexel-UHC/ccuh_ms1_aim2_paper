@@ -51,8 +51,8 @@ df_RR_ratio |>
   geom_hline(yintercept = 1) +
   geom_errorbar(aes(ymin = RR_ratio_low, ymax = RR_ratio_high), width = .5) +
   geom_point(aes(y = RR_ratio), size = 3) +
-  scale_y_continuous(trans = "log") +
-  scale_color_brewer(type = "qual", direction = -1) +
+  coord_transform(y = "log") +
+  scale_color_brewer(palette = "Dark2", direction = -1) +
   facet_wrap(~city_name, ncol = 5) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
   labs(color = "", x = "", y = "Ratio RRs")
@@ -175,8 +175,8 @@ list_plot_TMC_int <-
         geom_hline(yintercept = 1) +
         coord_transform(y = "log") +
         scale_x_continuous(limits = x_lims) +
-        scale_color_brewer(type = "qual") +
-        scale_fill_brewer(type = "qual") +
+        scale_color_brewer(palette = "Dark2") +
+        scale_fill_brewer(palette = "Dark2") +
         labs(
           title = glue("{city_name}"),
           color = "",

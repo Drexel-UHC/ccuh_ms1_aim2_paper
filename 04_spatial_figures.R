@@ -78,7 +78,7 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
         ggplot(aes(fill = .data[[fill_var]])) +
         geom_sf() +
         # Check if fill scale is discrete or continuous
-        {if(fill_var == "nbhd_type") scale_fill_brewer(type = "qual", drop = FALSE)
+        {if(fill_var == "nbhd_type") scale_fill_brewer(palette = "Dark2", drop = FALSE)
          else scale_fill_viridis_c(limits = c(0, 100))} +
         theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
         labs(title = city_name, fill = fill_lab)
