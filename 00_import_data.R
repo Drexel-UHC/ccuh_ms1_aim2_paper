@@ -93,9 +93,10 @@ df_pop <- df_aim2_pop_age |>
   mutate(age_category = 
            fct_collapse(age_range,
                         `<65` = ages_under_65, 
-                        `65+` = ages_over_65)) |> 
-  summarize()
-arrange(across(c(nbhd_geoid, year, age)))
+                        `65+` = ages_over_65),
+         nbhd_geoid = factor(nbhd_geoid)) |> 
+  summarize(pop = sum(pop_age), .by = c(iso2, nbhd_geoid, year, age_category)) |> 
+  arrange(across(c(nbhd_geoid, year, age_category)))
 
 # Save final list of data frames ------------------------------------------
 
