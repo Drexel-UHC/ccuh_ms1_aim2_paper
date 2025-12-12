@@ -105,6 +105,29 @@ df_pop <- df_aim2_pop_age |>
   filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
 
 
+# Import & format nbhd area data ------------------------------------------
+
+# Import neighborhood spatial data
+sf_aim2_nbhd = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/schema_ccuh_aim2_city_nbhd/sf_nbhd__schema_ccuh_aim2_city_nbhd.parquet" %>% 
+  arrow::open_dataset() %>% 
+  sf::st_as_sf() 
+
+# Problem nbhd indexes: 609, 961
+for(i in 1:nrow(sf_aim2_nbhd)) {
+  print(i)
+  sf_aim2_nbhd$geometry[i] |> st_area()
+}
+
+# Problem nbhd_geoid: 10224823123, 10219010150
+sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
+
+# Compute nbhd area exluding problem nbhds for now
+df_area <- sf_aim2_nbhd[-c(609, 961), ] |> 
+  mutate(nbhd_area = st_area(geometry)) |> 
+  as_tibble() |> 
+  select(c(city_name, nbhd_geoid, nbhd_area))
+
+
 # Save formatted data -----------------------------------------------------
 
 # Save formatted list of dfs
@@ -113,5 +136,4 @@ saveRDS(list_df_city_nbhd, "data/list_df_city_nbhd.rds")
 
 # Save population df
 saveRDS(df_pop, "data/df_pop.rds")
-
-
+saveRDS(df_area, "data/df_area.rds")
