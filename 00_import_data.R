@@ -125,7 +125,8 @@ sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
 df_area <- sf_aim2_nbhd[-c(609, 961), ] |> 
   mutate(nbhd_area = st_area(geometry)) |> 
   as_tibble() |> 
-  select(c(city_name, nbhd_geoid, nbhd_area))
+  select(c(city_name, nbhd_geoid, nbhd_area)) |> 
+  arrange(across(c(city_name, nbhd_geoid)))
 
 
 # Save formatted data -----------------------------------------------------
