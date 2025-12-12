@@ -123,7 +123,7 @@ sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
 
 # Compute nbhd area exluding problem nbhds for now
 df_area <- sf_aim2_nbhd[-c(609, 961), ] |> 
-  mutate(nbhd_area = st_area(geometry)) |> 
+  mutate(nbhd_area = as.numeric(st_area(geometry))) |> 
   as_tibble() |> 
   select(c(city_name, nbhd_geoid, nbhd_area)) |> 
   arrange(across(c(city_name, nbhd_geoid)))
