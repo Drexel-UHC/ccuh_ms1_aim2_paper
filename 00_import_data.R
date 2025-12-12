@@ -85,6 +85,10 @@ df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccu
   arrow::open_dataset() |> 
   dplyr::collect()
 
+# Get city name for each neighborhood
+df_city_name <- df_data_age |> 
+  summarize(across(c(city_name), first), .by = nbhd_geoid)
+
 # Create pop count dataframe compatible with daily data
 ages_under_65 <- paste0(seq(0, 60, by = 5),"-", seq(4, 64, by = 5))
 ages_over_65 <- paste0(seq(65, 75, by = 5),"-", seq(69, 79, by = 5)) |> c("80+")
@@ -96,7 +100,8 @@ df_pop <- df_aim2_pop_age |>
                         `65+` = ages_over_65),
          nbhd_geoid = factor(nbhd_geoid)) |> 
   summarize(pop = sum(pop_age), .by = c(iso2, nbhd_geoid, year, age_category)) |> 
-  arrange(across(c(nbhd_geoid, year, age_category)))
+  arrange(across(c(nbhd_geoid, year, age_category))) |> 
+  left_join(df_city_name, by = "nbhd_geoid")
 
 
 # Save formatted data -----------------------------------------------------
