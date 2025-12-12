@@ -9,7 +9,19 @@ library(SALURhelper)
 
 # Load data
 list_df_city_nbhd <- readRDS("data/list_df_city_nbhd.rds")
+df_pop <- readRDS("data/df_pop.rds")
 
+# Study city descriptives table -------------------------------------------
+
+# View potential population years 
+df_pop |> 
+  count(iso2, year) |> 
+  view()
+
+# Brazil's only year is 2010 & this is a mid point for the other LA countries
+# The earliest US year is 2012. Other approaches can be explored.
+df_psy <- df_pop |> # df population single year
+  filter((iso2 %in% c("BR", "GT", "PA") & year == 2010) | (iso2 == "US" & year == 2012))
 
 # Category count table ----------------------------------------------------
 
