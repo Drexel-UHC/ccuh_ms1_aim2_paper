@@ -24,3 +24,16 @@ RR_ratio_est <- function(fit1, fit2, se1, se2) {
     RR_ratio_high = exp(fit1 - fit2 + qnorm(.975) * sqrt(se1^2 + se2^2))
   )
 }
+
+# Helper function for labeling
+format_number <- function(num, digits = 1) {
+  format(round(num, digits), nsmall = digits)
+}
+
+# Extract median, 10th and 90th percentiles for table
+get_percentiles <- function(x, digits = 2) {
+  glue("{med} ({low}, {high})",
+       med = quantile(x, .5) |> format_number(digits),
+       low = quantile(x, .1) |> format_number(digits),
+       high = quantile(x, .9) |> format_number(digits))
+}
