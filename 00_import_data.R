@@ -16,6 +16,16 @@ df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccu
   arrow::open_dataset() |> 
   dplyr::collect()
 
+# Create pop count dataframe compatible with daily data
+ages_under_65 <- paste0(seq(0, 60, by = 5),"-", seq(4, 64, by = 5))
+ages_over_65 <- paste0(seq(65, 75, by = 5),"-", seq(69, 79, by = 5)) |> c("80+")
+
+df_pop <- df_aim2_pop_age |> 
+  mutate(age_category = 
+           fct_collapse(age_range,
+                        `<65` = ages_under_65, 
+                        `65+` = ages_over_65))
+
 # Create list of data frames by city
 list_df_city <-
   df_data_age |>
