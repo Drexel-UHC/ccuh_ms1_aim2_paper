@@ -4,27 +4,12 @@ library(glue)
 source("helper_functions.R")
 
 
-# Import and format data --------------------------------------------------
+# Import & format daily data ----------------------------------------------
 
 # Load daily data
 df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |>
   arrow::open_dataset() |>
   dplyr::collect()
-
-# Load population counts
-df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_1/harmonized__ccuh_aim_2__nbhd_pop_age_5_yr_counts__v1.parquet' |> 
-  arrow::open_dataset() |> 
-  dplyr::collect()
-
-# Create pop count dataframe compatible with daily data
-ages_under_65 <- paste0(seq(0, 60, by = 5),"-", seq(4, 64, by = 5))
-ages_over_65 <- paste0(seq(65, 75, by = 5),"-", seq(69, 79, by = 5)) |> c("80+")
-
-df_pop <- df_aim2_pop_age |> 
-  mutate(age_category = 
-           fct_collapse(age_range,
-                        `<65` = ages_under_65, 
-                        `65+` = ages_over_65))
 
 # Create list of data frames by city
 list_df_city <-
@@ -91,6 +76,26 @@ list_df_city_nbhd <-
       summarize(across(contains(c("pct_", "nbhd_type")), first), .by = nbhd_geoid) |>
       mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type))
   })
+
+
+# Import & format population data -----------------------------------------
+
+# Load population counts
+df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_1/harmonized__ccuh_aim_2__nbhd_pop_age_5_yr_counts__v1.parquet' |> 
+  arrow::open_dataset() |> 
+  dplyr::collect()
+
+# Create pop count dataframe compatible with daily data
+ages_under_65 <- paste0(seq(0, 60, by = 5),"-", seq(4, 64, by = 5))
+ages_over_65 <- paste0(seq(65, 75, by = 5),"-", seq(69, 79, by = 5)) |> c("80+")
+
+df_pop <- df_aim2_pop_age |> 
+  mutate(age_category = 
+           fct_collapse(age_range,
+                        `<65` = ages_under_65, 
+                        `65+` = ages_over_65)) |> 
+  summarize()
+arrange(across(c(nbhd_geoid, year, age)))
 
 # Save final list of data frames ------------------------------------------
 
