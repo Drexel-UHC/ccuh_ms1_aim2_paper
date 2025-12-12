@@ -6,9 +6,14 @@ source("helper_functions.R")
 
 # Import and format data --------------------------------------------------
 
-# Load data
+# Load daily data
 df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_0/ccuh_ms1__final_bundle_age__v1.parquet" |>
   arrow::open_dataset() |>
+  dplyr::collect()
+
+# Load population counts
+df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_1/harmonized__ccuh_aim_2__nbhd_pop_age_5_yr_counts__v1.parquet' |> 
+  arrow::open_dataset() |> 
   dplyr::collect()
 
 # Create list of data frames by city
