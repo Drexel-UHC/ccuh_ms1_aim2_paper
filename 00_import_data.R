@@ -101,7 +101,8 @@ df_pop <- df_aim2_pop_age |>
          nbhd_geoid = factor(nbhd_geoid)) |> 
   summarize(pop = sum(pop_age), .by = c(iso2, nbhd_geoid, year, age_category)) |> 
   arrange(across(c(nbhd_geoid, year, age_category))) |> 
-  left_join(df_city_name, by = "nbhd_geoid")
+  left_join(df_city_name, by = "nbhd_geoid") |> 
+  filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
 
 
 # Save formatted data -----------------------------------------------------
