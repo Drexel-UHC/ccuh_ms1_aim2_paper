@@ -126,7 +126,8 @@ df_area <- sf_aim2_nbhd[-c(609, 961), ] |>
   mutate(nbhd_area = as.numeric(units::set_units(st_area(geometry), km^2))) |> 
   as_tibble() |> 
   select(c(city_name, nbhd_geoid, nbhd_area)) |> 
-  arrange(across(c(city_name, nbhd_geoid)))
+  arrange(across(c(city_name, nbhd_geoid))) |> 
+  filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
 
 
 # Save formatted data -----------------------------------------------------
