@@ -98,8 +98,14 @@ df_pop <- df_aim2_pop_age |>
   summarize(pop = sum(pop_age), .by = c(iso2, nbhd_geoid, year, age_category)) |> 
   arrange(across(c(nbhd_geoid, year, age_category)))
 
-# Save final list of data frames ------------------------------------------
+
+# Save formatted data -----------------------------------------------------
 
 # Save formatted list of dfs
 saveRDS(list_df_city, "data/list_df_city.rds")
 saveRDS(list_df_city_nbhd, "data/list_df_city_nbhd.rds")
+
+# Save population df
+saveRDS(df_pop, "data/df_pop.rds")
+
+
