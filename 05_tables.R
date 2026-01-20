@@ -1,6 +1,7 @@
 library(tidyverse)
 library(patchwork)
 library(glue)
+library(stringi)
 library(gnm)
 library(dlnm)
 library(splines)
@@ -86,7 +87,43 @@ tbl_1 <-
   list(tbl_11, tbl_12, tbl_13, tbl_14, tbl_15, tbl_16, tbl_17, tbl_18) |>
   reduce(\(x, y) left_join(x, y, by = "city_name"))
 
-# Format descriptive table
+# Define row labels
+row_labels <- c(
+  pop = "Population (thousands)",
+  pct_65 = "% 65+",
+  death = "Deaths per year (thousands)",
+  popwt_temp = "Temperature",
+  n_neighborhoods = "Number of neighborhoods",
+  pop_nbhd = "Neighborhood population (thousands)",
+  nbhd_area = "Neighborhood area",
+  pct_green = "% Greenspace",
+  pct_educated = "% Educated"
+)
+
+# Format descriptive table (cities as columns)
+tbl_descriptive <- tbl_1 |>
+  data.table::transpose(keep.names = "descriptors", make.names = "city_name") |>
+  mutate(
+    descriptors = stri_replace_all_fixed(
+      descriptors,
+      names(row_labels),
+      row_labels
+    )
+  ) |>
+  mutate(
+    row_groups = rep(
+      c("City level characteristics", "Neighborhood level characteristics"),
+      c(4, 5)
+    )
+  ) |>
+  gt(
+    rowname_col = "descriptors",
+    groupname_col = "row_groups",
+    row_group_as_column = TRUE
+  ) |>
+  tab_header(title = "Table 1: Study cities descriptives")
+
+# Format descriptive table (cities as rows)
 tbl_descriptive <- tbl_1 |>
   gt(rowname_col = "city_name") |>
   tab_header(title = "Table 1: Study cities descriptives") |>
