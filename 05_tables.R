@@ -43,7 +43,7 @@ df_city <- list_df_city |> list_rbind()
 
 # Total city population
 tbl_11 <- df_psy |>
-  summarize(pop = sum(pop), .by = city_name)
+  summarize(pop = format_number(sum(pop) / 1000, 0), .by = city_name)
 
 # Percent over 65 in each city
 tbl_12 <- df_psy |>
@@ -55,7 +55,7 @@ tbl_12 <- df_psy |>
 # Total deaths per year in each city
 tbl_13 <- df_city |>
   summarize(death = sum(death), .by = c(city_name, year)) |>
-  summarize(death = get_percentiles(death, 0), .by = city_name)
+  summarize(death = get_percentiles(death / 1000, 1), .by = city_name)
 
 # Temperature range over entire study period in each city
 tbl_14 <- df_city |>
@@ -68,11 +68,11 @@ tbl_15 <- df_psy |>
 # Neighborhood population by city
 tbl_16 <- df_psy |>
   summarize(pop_nbhd = sum(pop), .by = c(city_name, nbhd_geoid)) |>
-  summarize(pop_nbhd = get_percentiles(pop_nbhd, 0), .by = city_name)
+  summarize(pop_nbhd = get_percentiles(pop_nbhd / 1000, 1), .by = city_name)
 
 # Neighborhood area by city
 tbl_17 <- df_area |>
-  summarize(nbhd_area = get_percentiles(nbhd_area, 2), .by = city_name)
+  summarize(nbhd_area = get_percentiles(nbhd_area, 1), .by = city_name)
 
 # Neighborhood percent greenspace & education by city
 tbl_18 <- df_city |>
@@ -99,12 +99,12 @@ tbl_descriptive <- tbl_1 |>
     columns = c(n_neighborhoods, pop_nbhd, nbhd_area, pct_green, pct_educated)
   ) |>
   cols_label(
-    pop = "Population",
+    pop = "Population (thousands)",
     pct_65 = "% 65+",
-    death = "Deaths per year",
+    death = "Deaths per year (thousands)",
     popwt_temp = "Temperature",
     n_neighborhoods = "Number of neighborhoods",
-    pop_nbhd = "Neighborhood population",
+    pop_nbhd = "Neighborhood population (thousands)",
     nbhd_area = "Neighborhood area",
     pct_green = "% Greenspace",
     pct_educated = "% Educated"
