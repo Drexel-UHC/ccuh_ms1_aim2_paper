@@ -26,7 +26,7 @@ df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
 
 # RRs ---------------------------------------------------------------------
 
-df_RR |> 
+df_RR |>
   mutate(nbhd_type = convert_to_label(nbhd_type)) |>
   ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
   geom_hline(yintercept = 1) +
@@ -34,7 +34,7 @@ df_RR |>
   geom_errorbar(aes(ymin = RR_low, ymax = RR_high), width = .5) +
   coord_transform(y = "log") +
   scale_color_brewer(palette = "Dark2", direction = -1) +
-  facet_wrap(~ city_name, ncol = 5) + 
+  facet_wrap(~city_name, ncol = 5) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
   labs(color = "", x = "", y = "RRs")
 
@@ -53,7 +53,7 @@ df_RR_ratio |>
   geom_point(aes(y = RR_ratio), size = 3) +
   coord_transform(y = "log") +
   scale_color_brewer(palette = "Dark2", direction = -1) +
-  facet_wrap(~ city_name, ncol = 5) +
+  facet_wrap(~city_name, ncol = 5) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
   labs(color = "", x = "", y = "Ratio RRs")
 
@@ -85,9 +85,9 @@ y_lims <- list_pred_city |>
   unlist() |>
   range()
 
-# x_lims <- list_pred_city |> 
-#   map(\(x) range(c(x$exposure, x$exposure))) |> 
-#   unlist() |> 
+# x_lims <- list_pred_city |>
+#   map(\(x) range(c(x$exposure, x$exposure))) |>
+#   unlist() |>
 #   range()
 
 # Temperature mortality curve plots

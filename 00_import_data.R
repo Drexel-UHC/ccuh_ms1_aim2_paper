@@ -50,10 +50,17 @@ list_df_city <- list_df_city |>
     df_city <- df_city |>
       mutate(
         nbhd_type = case_when(
-          pct_green < cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[1],
-          pct_green < cutoff_grn & pct_educated >= cutoff_edu ~ names_nbhd_type[2],
-          pct_green >= cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[3],
-          pct_green >= cutoff_grn & pct_educated >= cutoff_edu ~ names_nbhd_type[4],
+          pct_green < cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[
+            1
+          ],
+          pct_green < cutoff_grn & pct_educated >= cutoff_edu ~ names_nbhd_type[
+            2
+          ],
+          pct_green >= cutoff_grn & pct_educated < cutoff_edu ~ names_nbhd_type[
+            3
+          ],
+          pct_green >= cutoff_grn &
+            pct_educated >= cutoff_edu ~ names_nbhd_type[4],
           .default = "None"
         ) |>
           factor(levels = names_nbhd_type)
@@ -73,7 +80,10 @@ list_df_city_nbhd <-
   list_df_city |>
   map(\(df_city) {
     df_city |>
-      summarize(across(contains(c("pct_", "nbhd_type")), first), .by = nbhd_geoid) |>
+      summarize(
+        across(contains(c("pct_", "nbhd_type")), first),
+        .by = nbhd_geoid
+      ) |>
       mutate(nbhd_type = convert_to_label(nbhd_type, label_nbhd_type))
   })
 
@@ -81,39 +91,50 @@ list_df_city_nbhd <-
 # Import & format population data -----------------------------------------
 
 # Load population counts
-df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_1/harmonized__ccuh_aim_2__nbhd_pop_age_5_yr_counts__v1.parquet' |> 
-  arrow::open_dataset() |> 
+df_aim2_pop_age = '//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/_datawarehouse/v_0_1_1/harmonized__ccuh_aim_2__nbhd_pop_age_5_yr_counts__v1.parquet' |>
+  arrow::open_dataset() |>
   dplyr::collect()
 
+df_aim2_pop_age |>
+  count(iso2, year) |>
+  view()
+
 # Get city name for each neighborhood
-df_city_name <- df_data_age |> 
+df_city_name <- df_data_age |>
   summarize(across(c(city_name), first), .by = nbhd_geoid)
 
 # Create pop count dataframe compatible with daily data
-ages_under_65 <- paste0(seq(0, 60, by = 5),"-", seq(4, 64, by = 5))
-ages_over_65 <- paste0(seq(65, 75, by = 5),"-", seq(69, 79, by = 5)) |> c("80+")
+ages_under_65 <- paste0(seq(0, 60, by = 5), "-", seq(4, 64, by = 5))
+ages_over_65 <- paste0(seq(65, 75, by = 5), "-", seq(69, 79, by = 5)) |>
+  c("80+")
 
-df_pop <- df_aim2_pop_age |> 
-  mutate(age_category = 
-           fct_collapse(age_range,
-                        `<65` = ages_under_65, 
-                        `65+` = ages_over_65),
-         nbhd_geoid = factor(nbhd_geoid)) |> 
-  summarize(pop = sum(pop_age), .by = c(iso2, nbhd_geoid, year, age_category)) |> 
-  arrange(across(c(nbhd_geoid, year, age_category))) |> 
-  left_join(df_city_name, by = "nbhd_geoid") |> 
+df_pop <- df_aim2_pop_age |>
+  mutate(
+    age_category = fct_collapse(
+      age_range,
+      `<65` = ages_under_65,
+      `65+` = ages_over_65
+    ),
+    nbhd_geoid = factor(nbhd_geoid)
+  ) |>
+  summarize(
+    pop = sum(pop_age),
+    .by = c(iso2, nbhd_geoid, year, age_category)
+  ) |>
+  arrange(across(c(nbhd_geoid, year, age_category))) |>
+  left_join(df_city_name, by = "nbhd_geoid") |>
   filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
 
 
 # Import & format nbhd area data ------------------------------------------
 
 # Import neighborhood spatial data
-sf_aim2_nbhd = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/schema_ccuh_aim2_city_nbhd/sf_nbhd__schema_ccuh_aim2_city_nbhd.parquet" %>% 
-  arrow::open_dataset() %>% 
-  sf::st_as_sf() 
+sf_aim2_nbhd = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-server/freeze/schema_ccuh_aim2_city_nbhd/sf_nbhd__schema_ccuh_aim2_city_nbhd.parquet" %>%
+  arrow::open_dataset() %>%
+  sf::st_as_sf()
 
 # Problem nbhd indexes: 609, 961
-for(i in 1:nrow(sf_aim2_nbhd)) {
+for (i in 1:nrow(sf_aim2_nbhd)) {
   print(i)
   sf_aim2_nbhd$geometry[i] |> st_area()
 }
@@ -122,11 +143,11 @@ for(i in 1:nrow(sf_aim2_nbhd)) {
 sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
 
 # Compute nbhd area exluding problem nbhds for now
-df_area <- sf_aim2_nbhd[-c(609, 961), ] |> 
-  mutate(nbhd_area = as.numeric(units::set_units(st_area(geometry), km^2))) |> 
-  as_tibble() |> 
-  select(c(city_name, nbhd_geoid, nbhd_area)) |> 
-  arrange(across(c(city_name, nbhd_geoid))) |> 
+df_area <- sf_aim2_nbhd[-c(609, 961), ] |>
+  mutate(nbhd_area = as.numeric(units::set_units(st_area(geometry), km^2))) |>
+  as_tibble() |>
+  select(c(city_name, nbhd_geoid, nbhd_area)) |>
+  arrange(across(c(city_name, nbhd_geoid))) |>
   filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
 
 

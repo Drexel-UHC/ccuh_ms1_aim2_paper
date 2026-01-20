@@ -18,15 +18,18 @@ df_area <- readRDS("data/df_area.rds")
 
 # Study city descriptives table -------------------------------------------
 
-# View potential population years 
-df_pop |> 
-  count(iso2, year) |> 
+# View potential population years
+df_pop |>
+  count(iso2, year) |>
   view()
 
 # Brazil's only year is 2010 & this is a mid point for the other LA countries
 # The earliest US year is 2012. Other approaches can be explored.
 df_psy <- df_pop |> # df population single year
-  filter((iso2 %in% c("BR", "GT", "PA") & year == 2010) | (iso2 == "US" & year == 2012))
+  filter(
+    (iso2 %in% c("BR", "GT", "PA") & year == 2010) |
+      (iso2 == "US" & year == 2012)
+  )
 
 # Bind list_df_city into a single df for quicker calculations
 df_city <- list_df_city |> list_rbind()
@@ -39,7 +42,7 @@ df_area <- bind_rows(df_area, mutate(df_area, city_name = "All cities"))
 # Calculate rows for descriptive table
 
 # Total city population
-tbl_11 <- df_psy |> 
+tbl_11 <- df_psy |>
   summarize(pop = sum(pop), .by = city_name)
 
 # Percent over 65 in each city
@@ -50,53 +53,62 @@ tbl_12 <- df_psy |>
   mutate(pct_65 = format_number(100 * pop_65 / pop), .keep = "unused")
 
 # Total deaths per year in each city
-tbl_13 <- df_city |> 
-  summarize(death = sum(death), .by = c(city_name, year)) |> 
+tbl_13 <- df_city |>
+  summarize(death = sum(death), .by = c(city_name, year)) |>
   summarize(death = get_percentiles(death, 0), .by = city_name)
 
 # Temperature range over entire study period in each city
-tbl_14 <- df_city |> 
+tbl_14 <- df_city |>
   summarize(popwt_temp = get_percentiles(popwt_temp), .by = city_name)
 
 # Number of distinct neighborhoods by city
-tbl_15 <- df_psy |> 
+tbl_15 <- df_psy |>
   summarize(n_neighborhoods = n_distinct(nbhd_geoid), .by = city_name)
 
 # Neighborhood population by city
-tbl_16 <- df_psy |> 
-  summarize(pop_nbhd = sum(pop), .by = c(city_name, nbhd_geoid)) |> 
+tbl_16 <- df_psy |>
+  summarize(pop_nbhd = sum(pop), .by = c(city_name, nbhd_geoid)) |>
   summarize(pop_nbhd = get_percentiles(pop_nbhd, 0), .by = city_name)
 
 # Neighborhood area by city
-tbl_17 <- df_area |> 
+tbl_17 <- df_area |>
   summarize(nbhd_area = get_percentiles(nbhd_area, 2), .by = city_name)
 
 # Neighborhood percent greenspace & education by city
-tbl_18 <- df_city |> 
-  summarize(across(c(pct_green, pct_educated), get_percentiles), .by = city_name)
+tbl_18 <- df_city |>
+  summarize(
+    across(c(pct_green, pct_educated), get_percentiles),
+    .by = city_name
+  )
 
 # Combine all tables
-tbl_1 <- 
-  list(tbl_11, tbl_12, tbl_13, tbl_14, tbl_15, tbl_16, tbl_17, tbl_18) |> 
+tbl_1 <-
+  list(tbl_11, tbl_12, tbl_13, tbl_14, tbl_15, tbl_16, tbl_17, tbl_18) |>
   reduce(\(x, y) left_join(x, y, by = "city_name"))
 
 # Format descriptive table
-tbl_descriptive <- tbl_1 |> 
-  gt(rowname_col = "city_name") |> 
-  tab_header(title = "Table 1: Study cities descriptives") |> 
-  tab_spanner(label = "City level characteristics", 
-              columns = c(pop, pct_65, death, popwt_temp)) |> 
-  tab_spanner(label = "Neighborhood level characteristics", 
-              columns = c(n_neighborhoods, pop_nbhd, nbhd_area, pct_green, pct_educated)) |> 
-  cols_label(pop = "Population",
-             pct_65 = "% 65+",
-             death = "Deaths per year",
-             popwt_temp = "Temperature",
-             n_neighborhoods = "Number of neighborhoods",
-             pop_nbhd = "Neighborhood population",
-             nbhd_area = "Neighborhood area",
-             pct_green = "% Greenspace",
-             pct_educated = "% Educated")
+tbl_descriptive <- tbl_1 |>
+  gt(rowname_col = "city_name") |>
+  tab_header(title = "Table 1: Study cities descriptives") |>
+  tab_spanner(
+    label = "City level characteristics",
+    columns = c(pop, pct_65, death, popwt_temp)
+  ) |>
+  tab_spanner(
+    label = "Neighborhood level characteristics",
+    columns = c(n_neighborhoods, pop_nbhd, nbhd_area, pct_green, pct_educated)
+  ) |>
+  cols_label(
+    pop = "Population",
+    pct_65 = "% 65+",
+    death = "Deaths per year",
+    popwt_temp = "Temperature",
+    n_neighborhoods = "Number of neighborhoods",
+    pop_nbhd = "Neighborhood population",
+    nbhd_area = "Neighborhood area",
+    pct_green = "% Greenspace",
+    pct_educated = "% Educated"
+  )
 
 gtsave(tbl_descriptive, "results/table_descriptive.html")
 
