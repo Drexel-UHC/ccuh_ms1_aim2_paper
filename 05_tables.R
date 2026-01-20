@@ -35,9 +35,9 @@ df_psy <- df_pop |> # df population single year
 df_city <- list_df_city |> list_rbind()
 
 # Add an "All cities" category for easier total calculations
-df_psy <- bind_rows(df_psy, mutate(df_psy, city_name = "All cities"))
-df_city <- bind_rows(df_city, mutate(df_city, city_name = "All cities"))
-df_area <- bind_rows(df_area, mutate(df_area, city_name = "All cities"))
+# df_psy <- bind_rows(df_psy, mutate(df_psy, city_name = "All cities"))
+# df_city <- bind_rows(df_city, mutate(df_city, city_name = "All cities"))
+# df_area <- bind_rows(df_area, mutate(df_area, city_name = "All cities"))
 
 # Calculate rows for descriptive table
 
