@@ -31,9 +31,11 @@ format_number <- function(num, digits = 1) {
 }
 
 # Extract median, 10th and 90th percentiles for table
-get_percentiles <- function(x, digits = 2) {
-  glue("{med} ({low}, {high})",
-       med = quantile(x, .5) |> format_number(digits),
-       low = quantile(x, .1) |> format_number(digits),
-       high = quantile(x, .9) |> format_number(digits))
+get_percentiles <- function(x, digits = 1) {
+  glue(
+    "{med} ({low}, {high})",
+    med = quantile(x, .5) |> format_number(digits),
+    low = quantile(x, .1) |> format_number(digits),
+    high = quantile(x, .9) |> format_number(digits)
+  )
 }

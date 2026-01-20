@@ -7,6 +7,9 @@ library(splines)
 library(gt)
 library(SALURhelper)
 
+# Load helper functions
+source("helper_functions.R")
+
 # Load data
 list_df_city <- readRDS("data/list_df_city.rds")
 list_df_city_nbhd <- readRDS("data/list_df_city_nbhd.rds")
@@ -40,11 +43,11 @@ tbl_11 <- df_psy |>
   summarize(pop = sum(pop), .by = city_name)
 
 # Percent over 65 in each city
-tbl_12 <- df_psy |> 
-  filter(age_category == "65+") |> 
-  summarize(pop_65 = sum(pop), .by = city_name) |> 
-  left_join(tbl_11, by = "city_name") |> 
-  mutate(pct_65 = pop_65/pop, .keep = "unused")
+tbl_12 <- df_psy |>
+  filter(age_category == "65+") |>
+  summarize(pop_65 = sum(pop), .by = city_name) |>
+  left_join(tbl_11, by = "city_name") |>
+  mutate(pct_65 = format_number(100 * pop_65 / pop), .keep = "unused")
 
 # Total deaths per year in each city
 tbl_13 <- df_city |> 
