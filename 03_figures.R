@@ -27,6 +27,7 @@ df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
 # RRs ---------------------------------------------------------------------
 
 df_RR |>
+  filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   mutate(nbhd_type = convert_to_label(nbhd_type)) |>
   ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
   geom_hline(yintercept = 1) +
@@ -35,15 +36,15 @@ df_RR |>
   coord_transform(y = "log") +
   scale_color_brewer(palette = "Dark2", direction = -1) +
   facet_wrap(~city_name, ncol = 5) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
+  theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
   labs(color = "", x = "", y = "RRs")
 
-ggsave("results/figure_RRs.pdf", units = "cm", width = 35, height = 10)
+ggsave("results/figure_RRs.pdf", units = "cm", width = 25, height = 10)
 
 # Ratio of RRs ------------------------------------------------------------
 
 df_RR_ratio |>
-  #filter(!(city_name %in% c("Guatemala City", "Panama City"))) |>
+  filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   pivot_longer(contains("low_")) |>
   pivot_wider(values_from = value, names_from = estimate) |>
   mutate(name = convert_to_label(name, label_nbhd_change)) |>
@@ -54,10 +55,10 @@ df_RR_ratio |>
   coord_transform(y = "log") +
   scale_color_brewer(palette = "Dark2", direction = -1) +
   facet_wrap(~city_name, ncol = 5) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
-  labs(color = "", x = "", y = "Ratio RRs")
+  theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
+  labs(color = "", x = "", y = "Ratio of RRs")
 
-ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 35, height = 10)
+ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 25, height = 10)
 
 # Overall city curves -----------------------------------------------------
 
@@ -123,14 +124,15 @@ list_plot_TMC <-
     }
   )
 
-
-wrap_plots(list_plot_TMC, nrow = 2)
+list_plot_TMC |>
+  discard_at(c("Guatemala City", "Panama City")) |>
+  wrap_plots(nrow = 1)
 
 ggsave(
   "sup_results/figure_TMC_overall.pdf",
   units = "cm",
   width = 30,
-  height = 25
+  height = 20
 )
 
 
@@ -198,11 +200,13 @@ list_plot_TMC_int <-
     }
   )
 
-wrap_plots(list_plot_TMC_int, nrow = 2, guides = "collect")
+list_plot_TMC_int |>
+  discard_at(c("Guatemala City", "Panama City")) |>
+  wrap_plots(nrow = 1, guides = "collect")
 
 ggsave(
   "sup_results/figure_TMC_nbhd_type.pdf",
   units = "cm",
   width = 30,
-  height = 25
+  height = 20
 )
