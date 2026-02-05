@@ -71,6 +71,9 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
       city_name = names(list_df_city_nbhd)
     ),
     \(sf, df, city_name) {
+      # Correct São Paulo's name
+      city_name <- replace_values(city_name, "Sao Paulo" ~ "São Paulo")
+
       # Create plot with spatial boundaries
       sf |>
         left_join(df, by = "nbhd_geoid") |>

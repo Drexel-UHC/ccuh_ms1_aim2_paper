@@ -30,7 +30,10 @@ df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
 
 df_RR |>
   #filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
-  mutate(nbhd_type = convert_to_label(nbhd_type)) |>
+  mutate(
+    nbhd_type = convert_to_label(nbhd_type),
+    city_name = replace_values(city_name, "Sao Paulo" ~ "São Paulo")
+  ) |>
   ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
   geom_hline(yintercept = 1) +
   geom_point() +
@@ -49,7 +52,10 @@ df_RR_ratio |>
   #filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   pivot_longer(contains("low_")) |>
   pivot_wider(values_from = value, names_from = estimate) |>
-  mutate(name = convert_to_label(name, label_nbhd_change)) |>
+  mutate(
+    name = convert_to_label(name, label_nbhd_change),
+    city_name = replace_values(city_name, "Sao Paulo" ~ "São Paulo")
+  ) |>
   ggplot(aes(x = name, color = name)) +
   geom_hline(yintercept = 1) +
   geom_errorbar(aes(ymin = RR_ratio_low, ymax = RR_ratio_high), width = .5) +
@@ -101,6 +107,7 @@ list_plot_TMC <-
       # Get city specific limits for x & y axis
       #y_lims <- range(c(pred_city$RR_low, pred_city$RR_high))
       x_lims <- range(df_city$popwt_temp)
+      city_name <- replace_values(city_name, "Sao Paulo" ~ "São Paulo")
 
       # Overall curve TMC
       p1 <- pred_city |>
@@ -169,6 +176,7 @@ list_plot_TMC_int <-
     list(list_pred_city_int, list_df_city, names(list_df_city)),
     \(pred_city_int, df_city, city_name) {
       x_lims <- range(df_city$popwt_temp)
+      city_name <- replace_values(city_name, "Sao Paulo" ~ "São Paulo")
 
       # Overall curve TMC
       p1 <- pred_city_int |>
