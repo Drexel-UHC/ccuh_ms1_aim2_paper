@@ -133,28 +133,28 @@ tbl_descriptive <- tbl_1 |>
   tab_header(title = "Table 1: Study cities descriptives")
 
 # Format descriptive table (cities as rows)
-tbl_descriptive <- tbl_1 |>
-  gt(rowname_col = "city_name") |>
-  tab_header(title = "Table 1: Study cities descriptives") |>
-  tab_spanner(
-    label = "City level characteristics",
-    columns = c(pop, pct_65, death, popwt_temp)
-  ) |>
-  tab_spanner(
-    label = "Neighborhood level characteristics",
-    columns = c(n_neighborhoods, pop_nbhd, nbhd_area, pct_green, pct_educated)
-  ) |>
-  cols_label(
-    pop = "Population (thousands)",
-    pct_65 = "% 65+",
-    death = "Deaths per year (thousands)",
-    popwt_temp = "Temperature",
-    n_neighborhoods = "Number of neighborhoods",
-    pop_nbhd = "Neighborhood population (thousands)",
-    nbhd_area = "Neighborhood area",
-    pct_green = "% Greenspace",
-    pct_educated = "% Educated"
-  )
+# tbl_descriptive <- tbl_1 |>
+#   gt(rowname_col = "city_name") |>
+#   tab_header(title = "Table 1: Study cities descriptives") |>
+#   tab_spanner(
+#     label = "City level characteristics",
+#     columns = c(pop, pct_65, death, popwt_temp)
+#   ) |>
+#   tab_spanner(
+#     label = "Neighborhood level characteristics",
+#     columns = c(n_neighborhoods, pop_nbhd, nbhd_area, pct_green, pct_educated)
+#   ) |>
+#   cols_label(
+#     pop = "Population (thousands)",
+#     pct_65 = "% 65+",
+#     death = "Deaths per year (thousands)",
+#     popwt_temp = "Temperature",
+#     n_neighborhoods = "Number of neighborhoods",
+#     pop_nbhd = "Neighborhood population (thousands)",
+#     nbhd_area = "Neighborhood area",
+#     pct_green = "% Greenspace",
+#     pct_educated = "% Educated"
+#   )
 
 gtsave(tbl_descriptive, "results/table_descriptive.html")
 
