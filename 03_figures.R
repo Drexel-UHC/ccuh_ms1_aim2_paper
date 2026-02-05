@@ -29,7 +29,7 @@ df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
 # RRs ---------------------------------------------------------------------
 
 df_RR |>
-  filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
+  #filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   mutate(nbhd_type = convert_to_label(nbhd_type)) |>
   ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
   geom_hline(yintercept = 1) +
@@ -41,12 +41,12 @@ df_RR |>
   theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
   labs(color = "", x = "", y = "RRs")
 
-ggsave("results/figure_RRs.pdf", units = "cm", width = 25, height = 10)
+ggsave("results/figure_RRs.pdf", units = "cm", width = 30, height = 10)
 
 # Ratio of RRs ------------------------------------------------------------
 
 df_RR_ratio |>
-  filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
+  #filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   pivot_longer(contains("low_")) |>
   pivot_wider(values_from = value, names_from = estimate) |>
   mutate(name = convert_to_label(name, label_nbhd_change)) |>
@@ -60,7 +60,7 @@ df_RR_ratio |>
   theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
   labs(color = "", x = "", y = "Ratio of RRs")
 
-ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 25, height = 10)
+ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 30, height = 10)
 
 # Overall city curves -----------------------------------------------------
 
@@ -127,14 +127,14 @@ list_plot_TMC <-
   )
 
 list_plot_TMC |>
-  discard_at(c("Guatemala City", "Panama City")) |>
+  #discard_at(c("Guatemala City", "Panama City")) |>
   wrap_plots(nrow = 1)
 
 ggsave(
   "sup_results/figure_TMC_overall.pdf",
   units = "cm",
   width = 30,
-  height = 20
+  height = 12
 )
 
 
@@ -203,12 +203,12 @@ list_plot_TMC_int <-
   )
 
 list_plot_TMC_int |>
-  discard_at(c("Guatemala City", "Panama City")) |>
+  #discard_at(c("Guatemala City", "Panama City")) |>
   wrap_plots(nrow = 1, guides = "collect")
 
 ggsave(
   "sup_results/figure_TMC_nbhd_type.pdf",
   units = "cm",
-  width = 30,
-  height = 20
+  width = 35,
+  height = 12
 )
