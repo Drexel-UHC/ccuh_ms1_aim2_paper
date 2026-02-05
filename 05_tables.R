@@ -44,7 +44,7 @@ df_city <- list_df_city |> list_rbind()
 
 # Total city population
 tbl_11 <- df_psy |>
-  summarize(pop = format_number(sum(pop) / 1000, 0), .by = city_name)
+  summarize(pop = sum(pop), .by = city_name)
 
 # Percent over 65 in each city
 tbl_12 <- df_psy |>
@@ -84,7 +84,16 @@ tbl_18 <- df_city |>
 
 # Combine all tables
 tbl_1 <-
-  list(tbl_11, tbl_12, tbl_13, tbl_14, tbl_15, tbl_16, tbl_17, tbl_18) |>
+  list(
+    mutate(tbl_11, pop = format_number(pop / 1000, 0)),
+    tbl_12,
+    tbl_13,
+    tbl_14,
+    tbl_15,
+    tbl_16,
+    tbl_17,
+    tbl_18
+  ) |>
   reduce(\(x, y) left_join(x, y, by = "city_name"))
 
 # Define row labels
