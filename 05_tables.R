@@ -170,3 +170,13 @@ tbl_count_nbhd_type <- list_df_city_nbhd |>
   tab_options(footnotes.marks = "letters")
 
 gtsave(tbl_count_nbhd_type, "results/table_count_nbhd_type.html")
+
+# P75 & P99 by city -------------------------------------------------------
+
+list_df_city |>
+  map(\(df) {
+    tibble(
+      p75 = quantile(df$popwt_temp, .75),
+      p99 = quantile(df$popwt_temp, .99)
+    )
+  })
