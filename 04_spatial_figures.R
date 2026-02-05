@@ -14,6 +14,8 @@ theme_update(
   plot.subtitle = element_text(hjust = 0.5)
 )
 
+color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
+
 # Load helper functions
 source("helper_functions.R")
 
@@ -77,7 +79,7 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
         # Check if fill scale is discrete or continuous
         {
           if (fill_var == "nbhd_type") {
-            scale_fill_brewer(palette = "Dark2", drop = FALSE)
+            scale_fill_manual(values = rev(color_pal))
           } else {
             scale_fill_viridis_c(limits = c(0, 100))
           }
