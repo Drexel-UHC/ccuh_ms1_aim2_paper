@@ -106,10 +106,10 @@ f_height <- 15
 
 # Render plots
 wrap_plots(
-  create_list_plot_spatial("nbhd_type")[-c(1:2)],
-  #widths = widths,
-  #heights = heights,
-  #design = design,
+  create_list_plot_spatial("nbhd_type")[c(3, 5, 4)],
+  widths = c(1, 1),
+  heights = c(1, 1),
+  design = c("AB\nCC"),
   guides = "collect"
 )
 
@@ -117,8 +117,8 @@ wrap_plots(
 ggsave(
   "results/figures_spatial.pdf",
   units = "cm",
-  width = f_width,
-  height = f_height
+  width = 30,
+  height = 25
 )
 
 
