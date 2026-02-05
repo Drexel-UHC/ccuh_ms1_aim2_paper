@@ -1,3 +1,17 @@
+# Create ordered factor of city names
+city_to_factor <- function(city_name) {
+  factor(
+    replace_values(city_name, "Sao Paulo" ~ "São Paulo"),
+    levels = c(
+      "Philadelphia PA Metro",
+      "Rio de Janeiro",
+      "São Paulo",
+      "Panama City",
+      "Guatemala City"
+    )
+  )
+}
+
 # Labeller for nbhd types or changes in nbhds
 label_nbhd_change <- c("Low Edu", "Low Green", "Low Green Low Edu")
 label_nbhd_type <- c(

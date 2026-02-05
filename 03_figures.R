@@ -23,7 +23,7 @@ list_df_city <- readRDS("data/list_df_city.rds")
 list_model_city <- readRDS("models/list_model_city.rds")
 list_model_city_int <- readRDS("models/list_model_city_int.rds")
 df_RR <- read_csv("results/RR_p99_interaction.csv")
-df_RR_ratio <- read_csv("results/RR_ratio_p99.csv")
+df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
 
 
 # RRs ---------------------------------------------------------------------
@@ -32,7 +32,7 @@ df_RR |>
   #filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   mutate(
     nbhd_type = convert_to_label(nbhd_type),
-    city_name = replace_values(city_name, "Sao Paulo" ~ "São Paulo")
+    city_name = city_to_factor(city_name)
   ) |>
   ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
   geom_hline(yintercept = 1) +
@@ -54,7 +54,7 @@ df_RR_ratio |>
   pivot_wider(values_from = value, names_from = estimate) |>
   mutate(
     name = convert_to_label(name, label_nbhd_change),
-    city_name = replace_values(city_name, "Sao Paulo" ~ "São Paulo")
+    city_name = city_to_factor(city_name)
   ) |>
   ggplot(aes(x = name, color = name)) +
   geom_hline(yintercept = 1) +
@@ -107,7 +107,6 @@ list_plot_TMC <-
       # Get city specific limits for x & y axis
       #y_lims <- range(c(pred_city$RR_low, pred_city$RR_high))
       x_lims <- range(df_city$popwt_temp)
-      city_name <- replace_values(city_name, "Sao Paulo" ~ "São Paulo")
 
       # Overall curve TMC
       p1 <- pred_city |>
@@ -176,7 +175,6 @@ list_plot_TMC_int <-
     list(list_pred_city_int, list_df_city, names(list_df_city)),
     \(pred_city_int, df_city, city_name) {
       x_lims <- range(df_city$popwt_temp)
-      city_name <- replace_values(city_name, "Sao Paulo" ~ "São Paulo")
 
       # Overall curve TMC
       p1 <- pred_city_int |>

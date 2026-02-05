@@ -50,7 +50,7 @@ pan_sf <- df_salurbal_nbhd |>
   mutate(nbhd_geoid = geoid)
 
 # Bind into list
-list_sf <- list(gua_sf, pan_sf, phl_sf, rio_sf, sao_sf)
+list_sf <- list(phl_sf, rio_sf, sao_sf, pan_sf, gua_sf)
 
 
 # Spatial plots specification ---------------------------------------------
@@ -71,9 +71,6 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
       city_name = names(list_df_city_nbhd)
     ),
     \(sf, df, city_name) {
-      # Correct São Paulo's name
-      city_name <- replace_values(city_name, "Sao Paulo" ~ "São Paulo")
-
       # Create plot with spatial boundaries
       sf |>
         left_join(df, by = "nbhd_geoid") |>
@@ -96,8 +93,8 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
 }
 
 # Specify plot layout
-design <- "ABC
-           DDE"
+design <- "ABB
+           CDE"
 
 widths <- c(1, 1, 1)
 heights <- c(1, 1)

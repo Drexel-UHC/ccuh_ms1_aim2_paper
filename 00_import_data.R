@@ -1,6 +1,10 @@
 library(tidyverse)
 library(glue)
 
+# Spatial Libraries
+library(sf)
+library(geoarrow)
+
 source("helper_functions.R")
 
 
@@ -14,8 +18,9 @@ df_data_age = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-se
 # Create list of data frames by city
 list_df_city <-
   df_data_age |>
-  split(df_data_age$city_name) |>
-  discard_at(c("Belo Horizonte", "Campinas")) |>
+  filter_out(city_name %in% c("Belo Horizonte", "Campinas")) |>
+  mutate(city_name = city_to_factor(city_name)) %>%
+  split(.$city_name) |>
   map(\(df_city) {
     df_city |>
       mutate(
@@ -121,9 +126,10 @@ df_pop <- df_aim2_pop_age |>
     pop = sum(pop_age),
     .by = c(iso2, nbhd_geoid, year, age_category)
   ) |>
-  arrange(across(c(nbhd_geoid, year, age_category))) |>
   left_join(df_city_name, by = "nbhd_geoid") |>
-  filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
+  filter_out(city_name %in% c("Belo Horizonte", "Campinas")) |>
+  mutate(city_name = city_to_factor(city_name)) |>
+  arrange(across(c(city_name, nbhd_geoid, year, age_category)))
 
 
 # Import & format nbhd area data ------------------------------------------
@@ -144,11 +150,14 @@ sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
 
 # Compute nbhd area exluding problem nbhds for now
 df_area <- sf_aim2_nbhd[-c(609, 961), ] |>
-  mutate(nbhd_area = as.numeric(units::set_units(st_area(geometry), km^2))) |>
+  filter_out(city_name %in% c("Belo Horizonte", "Campinas")) |>
+  mutate(
+    nbhd_area = as.numeric(units::set_units(st_area(geometry), km^2)),
+    city_name = city_to_factor(city_name)
+  ) |>
   as_tibble() |>
   select(c(city_name, nbhd_geoid, nbhd_area)) |>
-  arrange(across(c(city_name, nbhd_geoid))) |>
-  filter(!(city_name %in% c("Belo Horizonte", "Campinas")))
+  arrange(across(c(city_name, nbhd_geoid)))
 
 
 # Save formatted data -----------------------------------------------------
