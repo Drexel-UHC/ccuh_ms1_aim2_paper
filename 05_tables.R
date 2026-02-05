@@ -179,4 +179,14 @@ list_df_city |>
       p75 = quantile(df$popwt_temp, .75),
       p99 = quantile(df$popwt_temp, .99)
     )
-  })
+  }) |>
+  list_rbind(names_to = "city_name") |>
+  write_csv("results/p75_p99_by_city.csv")
+
+# Total number of deaths -------------------------------------------------
+
+list_df_city |>
+  map(\(df) tibble(total_deaths = sum(df$death))) |>
+  list_rbind(names_to = "city_name") %>%
+  add_row(city_name = "All", total_deaths = sum(.$total_deaths)) |>
+  write_csv("results/total_deaths.csv")
