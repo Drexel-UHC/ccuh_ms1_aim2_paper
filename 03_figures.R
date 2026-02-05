@@ -6,12 +6,14 @@ library(dlnm)
 library(splines)
 library(SALURhelper)
 
-# ggplot2 theme
+# ggplot2 theme & color palette
 set_theme(theme_bw())
 theme_update(
   plot.title = element_text(hjust = 0.5),
   plot.subtitle = element_text(hjust = 0.5)
 )
+
+color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
 
 # Load helper functions
 source("helper_functions.R")
@@ -34,7 +36,7 @@ df_RR |>
   geom_point() +
   geom_errorbar(aes(ymin = RR_low, ymax = RR_high), width = .5) +
   coord_transform(y = "log") +
-  scale_color_brewer(palette = "Dark2", direction = -1) +
+  scale_color_manual(values = color_pal) +
   facet_wrap(~city_name, ncol = 5) +
   theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
   labs(color = "", x = "", y = "RRs")
@@ -53,7 +55,7 @@ df_RR_ratio |>
   geom_errorbar(aes(ymin = RR_ratio_low, ymax = RR_ratio_high), width = .5) +
   geom_point(aes(y = RR_ratio), size = 3) +
   coord_transform(y = "log") +
-  scale_color_brewer(palette = "Dark2", direction = -1) +
+  scale_color_manual(values = color_pal[-1]) +
   facet_wrap(~city_name, ncol = 5) +
   theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
   labs(color = "", x = "", y = "Ratio of RRs")
@@ -177,8 +179,8 @@ list_plot_TMC_int <-
         geom_hline(yintercept = 1) +
         coord_transform(y = "log") +
         scale_x_continuous(limits = x_lims) +
-        scale_color_brewer(palette = "Dark2") +
-        scale_fill_brewer(palette = "Dark2") +
+        scale_color_manual(values = rev(color_pal)) +
+        scale_fill_manual(values = rev(color_pal)) +
         labs(
           title = glue("{city_name}"),
           color = "",
