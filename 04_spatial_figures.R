@@ -106,10 +106,10 @@ f_height <- 15
 
 # Render plots
 wrap_plots(
-  create_list_plot_spatial("nbhd_type"),
-  widths = widths,
-  heights = heights,
-  design = design,
+  create_list_plot_spatial("nbhd_type")[-c(1:2)],
+  #widths = widths,
+  #heights = heights,
+  #design = design,
   guides = "collect"
 )
 
