@@ -16,6 +16,7 @@ list_df_city <- readRDS("data/list_df_city.rds")
 list_df_city_nbhd <- readRDS("data/list_df_city_nbhd.rds")
 df_pop <- readRDS("data/df_pop.rds")
 df_area <- readRDS("data/df_area.rds")
+df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
 
 # Study city descriptives table -------------------------------------------
 
@@ -206,3 +207,31 @@ list_df_city |>
   list_rbind(names_to = "city_name") %>%
   add_row(city_name = "All", total_deaths = sum(.$total_deaths)) |>
   write_csv("results/total_deaths.csv")
+
+
+# Ratio of RRs ------------------------------------------------------------
+
+df_RR_ratio |>
+  pivot_wider(
+    names_from = estimate,
+    values_from = c(low_edu, low_green, low_green_low_edu)
+  ) |>
+  mutate(across(-city_name, \(x) format_number(x, digits = 2))) |>
+  mutate(
+    low_edu = glue(
+      "{low_edu_RR_ratio} ({low_edu_RR_ratio_low}, {low_edu_RR_ratio_high})"
+    ),
+    low_green = glue(
+      "{low_green_RR_ratio} ({low_green_RR_ratio_low}, {low_green_RR_ratio_high})"
+    ),
+    low_green_low_edu = glue(
+      "{low_green_low_edu_RR_ratio} ({low_green_low_edu_RR_ratio_low}, {low_green_low_edu_RR_ratio_high})"
+    ),
+    .keep = "unused"
+  ) |>
+  gt(rowname_col = "city_name") |>
+  cols_label(
+    low_edu = "Low edu",
+    low_green = "Low green",
+    low_green_low_edu = "Low green/low edu"
+  )
