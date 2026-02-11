@@ -43,6 +43,7 @@ df_RR |>
   facet_wrap(~city_name, ncol = 3, nrow = 2) +
   theme(
     axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
     legend.position = c(.82, .25)
   ) +
   labs(color = "", x = "", y = "RRs")
@@ -68,6 +69,7 @@ df_RR_ratio |>
   facet_wrap(~city_name, ncol = 3, nrow = 2) +
   theme(
     axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
     legend.position = c(.82, .25)
   ) +
   labs(color = "", x = "", y = "Ratio of RRs")
