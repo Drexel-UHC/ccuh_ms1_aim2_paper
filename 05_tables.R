@@ -56,6 +56,16 @@ tbl_13 <- df_city |>
 tbl_14 <- df_city |>
   summarize(popwt_temp = get_percentiles(popwt_temp), .by = city_name)
 
+# Within city correlation of education and greenspace
+tbl_cor <- df_city |>
+  summarize(
+    spear_cor = format_number(
+      cor(pct_green, pct_educated, method = "spearman"),
+      digits = 2
+    ),
+    .by = city_name
+  )
+
 # Number of distinct neighborhoods by city
 tbl_15 <- df_psy |>
   summarize(n_neighborhoods = n_distinct(nbhd_geoid), .by = city_name)
@@ -83,6 +93,7 @@ tbl_1 <-
     tbl_12,
     tbl_13,
     tbl_14,
+    tbl_cor,
     tbl_15,
     tbl_16,
     tbl_17,
@@ -96,6 +107,7 @@ row_labels <- c(
   pct_65 = "% 65+",
   death = "Deaths per year (thousands)",
   popwt_temp = "Temperature",
+  spear_cor = "Greenspace & education correlation",
   n_neighborhoods = "Number of neighborhoods",
   pop_nbhd = "Neighborhood population (thousands)",
   nbhd_area = "Neighborhood area",
@@ -116,7 +128,7 @@ tbl_descriptive <- tbl_1 |>
   mutate(
     row_groups = rep(
       c("City level characteristics", "Neighborhood level characteristics"),
-      c(4, 5)
+      c(5, 5)
     )
   ) |>
   gt(
@@ -151,6 +163,7 @@ tbl_descriptive <- tbl_1 |>
 #   )
 
 gtsave(tbl_descriptive, "results/table_descriptive.html")
+
 
 # Category count table ----------------------------------------------------
 
