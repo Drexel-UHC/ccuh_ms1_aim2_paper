@@ -211,7 +211,7 @@ list_df_city |>
 
 # Ratio of RRs ------------------------------------------------------------
 
-df_RR_ratio |>
+table_RR_ratio <- df_RR_ratio |>
   pivot_wider(
     names_from = estimate,
     values_from = c(low_edu, low_green, low_green_low_edu)
@@ -235,3 +235,5 @@ df_RR_ratio |>
     low_green = "Low green",
     low_green_low_edu = "Low green/low edu"
   )
+
+gtsave(table_RR_ratio, "results/table_RR_ratio.html")
