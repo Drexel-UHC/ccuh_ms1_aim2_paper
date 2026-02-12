@@ -9,11 +9,12 @@
 - `02_RRs.R`: Estimate the RRs at the 99th temperature percentile for cities and their neighborhood types.
 - `03_figures.R`: Create figures from the analysis.
 - `04_spatial_figures.R`: Create plot of neighborhood types for each city with spatial boundaries.
+- `05_tables.R`: Creates all tables.
 - `helper_functions.R`: Hosts additional functions used to make code cleaner.
 
 ### Extra Analysis
 
-- `E1_exploratory_data_analysis.qmd`: A notebook that generates exploratory plots of our response, modifiers, and Country level statistics. 
+- `E1_exploratory_data_analysis.qmd`: A notebook that generates exploratory plots of our response, modifiers, and Country level statistics.
 
 ## Folders
 
