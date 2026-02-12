@@ -140,13 +140,13 @@ sf_aim2_nbhd = "//files.drexel.edu/colleges/SOPH/Shared/UHC/Projects/CCUH/ccuh-s
   sf::st_as_sf()
 
 # Problem nbhd indexes: 609, 961
-for (i in 1:nrow(sf_aim2_nbhd)) {
-  print(i)
-  sf_aim2_nbhd$geometry[i] |> st_area()
-}
+# for (i in 1:nrow(sf_aim2_nbhd)) {
+#   print(i)
+#   sf_aim2_nbhd$geometry[i] |> st_area()
+# }
 
 # Problem nbhd_geoid: 10224823123, 10219010150
-sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
+#sf_aim2_nbhd$nbhd_geoid[c(609, 961)]
 
 # Compute nbhd area exluding problem nbhds for now
 df_area <- sf_aim2_nbhd[-c(609, 961), ] |>
