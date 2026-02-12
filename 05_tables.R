@@ -53,6 +53,11 @@ tbl_13 <- df_city |>
   summarize(death = sum(death), .by = c(city_name, year)) |>
   summarize(death = get_percentiles(death / 1000, 1), .by = city_name)
 
+# Neighorhood level deaths per year in each city
+tbl_nhd <- df_city |>
+  summarize(death = sum(death), .by = c(city_name, nbhd_geoid, year)) |>
+  summarize(nbhd_death = get_percentiles(death, 0), .by = city_name)
+
 # Temperature range over entire study period in each city
 tbl_14 <- df_city |>
   summarize(popwt_temp = get_percentiles(popwt_temp), .by = city_name)
@@ -97,6 +102,7 @@ tbl_1 <-
     tbl_cor,
     tbl_15,
     tbl_16,
+    tbl_nhd,
     tbl_17,
     tbl_18
   ) |>
@@ -111,6 +117,7 @@ row_labels <- c(
   spear_cor = "Greenspace & education correlation",
   n_neighborhoods = "Number of neighborhoods",
   pop_nbhd = "Neighborhood population (thousands)",
+  nbhd_death = "Deaths per year",
   nbhd_area = "Neighborhood area",
   pct_green = "% Greenspace",
   pct_educated = "% Educated"
@@ -129,7 +136,7 @@ tbl_descriptive <- tbl_1 |>
   mutate(
     row_groups = rep(
       c("City level characteristics", "Neighborhood level characteristics"),
-      c(5, 5)
+      c(5, 6)
     )
   ) |>
   gt(
