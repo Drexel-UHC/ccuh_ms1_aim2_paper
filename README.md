@@ -1,5 +1,7 @@
 # CCUH Aim 2 Paper
 
+To install the package versions used in this analysis, run `renv::activate()` and then `renv::restore()` from the `R` console with this folder as the working directory.
+
 ## Scripts
 
 ### Main Analysis:
