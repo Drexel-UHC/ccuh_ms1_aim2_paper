@@ -45,6 +45,8 @@ df_RR |>
   scale_color_manual(values = color_pal) +
   facet_wrap(~city_name, ncol = 3, nrow = 2) +
   theme(
+    axis.title = element_text(size = 14),
+    axis.text.y = element_text(size = 12),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
     legend.position = c(.82, .25)
@@ -71,6 +73,8 @@ df_RR_ratio |>
   scale_color_manual(values = color_pal[-1]) +
   facet_wrap(~city_name, ncol = 3, nrow = 2) +
   theme(
+    axis.title = element_text(size = 14),
+    axis.text.y = element_text(size = 12),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
     legend.position = c(.82, .25)
