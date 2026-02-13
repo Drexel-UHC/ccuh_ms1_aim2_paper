@@ -10,7 +10,10 @@ library(SALURhelper)
 set_theme(theme_bw())
 theme_update(
   plot.title = element_text(hjust = 0.5),
-  plot.subtitle = element_text(hjust = 0.5)
+  plot.subtitle = element_text(hjust = 0.5),
+  strip.background = element_blank(),
+  strip.text = element_text(size = 14),
+  strip.placement = "outside"
 )
 
 color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
