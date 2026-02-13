@@ -154,13 +154,13 @@ list_plot_TMC <-
 
 list_plot_TMC |>
   #discard_at(c("Guatemala City", "Panama City")) |>
-  wrap_plots(nrow = 1)
+  wrap_plots(nrow = 2)
 
 ggsave(
   "sup_results/figure_TMC_overall.pdf",
   units = "cm",
-  width = 30,
-  height = 12
+  width = 20,
+  height = 20
 )
 
 
@@ -231,11 +231,16 @@ list_plot_TMC_int <-
 
 list_plot_TMC_int |>
   #discard_at(c("Guatemala City", "Panama City")) |>
-  wrap_plots(nrow = 1, guides = "collect")
+  wrap_plots(nrow = 2, guides = "collect") +
+  guide_area() +
+  theme(
+    legend.key.size = unit(1, "cm"),
+    legend.text = element_text(size = 12)
+  )
 
 ggsave(
   "sup_results/figure_TMC_nbhd_type.pdf",
   units = "cm",
-  width = 35,
-  height = 12
+  width = 20,
+  height = 20
 )
