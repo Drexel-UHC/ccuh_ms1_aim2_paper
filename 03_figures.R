@@ -144,7 +144,8 @@ list_plot_TMC <-
         ggplot(aes(popwt_temp)) +
         geom_histogram(alpha = .2, bins = 35) +
         scale_x_continuous(limits = x_lims) +
-        labs(title = "", x = "Temperature (°C)", y = "Count")
+        labs(x = "Temperature (°C)", y = "Count") +
+        theme(plot.title = element_blank())
 
       # Combine plots w/ patchwork
       p1 / p2
@@ -220,7 +221,8 @@ list_plot_TMC_int <-
         ggplot(aes(popwt_temp)) +
         geom_histogram(alpha = .2, bins = 35) +
         scale_x_continuous(limits = x_lims) +
-        labs(title = "", x = "Temperature (°C)", y = "Count")
+        labs(x = "Temperature (°C)", y = "Count") +
+        theme(plot.title = element_blank())
 
       # Combine plots w/ patchwork
       p1 / p2
