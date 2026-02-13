@@ -88,7 +88,7 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
           if (fill_var == "nbhd_type") {
             scale_fill_manual(values = rev(color_pal))
           } else {
-            scale_fill_viridis_c(limits = c(0, 100))
+            scale_fill_viridis_c(limits = c(0, 100), direction = -1)
           }
         } +
         labs(title = city_name, fill = fill_lab)
