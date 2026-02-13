@@ -10,7 +10,10 @@ library(SALURhelper)
 set_theme(theme_bw())
 theme_update(
   plot.title = element_text(hjust = 0.5),
-  plot.subtitle = element_text(hjust = 0.5)
+  plot.subtitle = element_text(hjust = 0.5),
+  strip.background = element_blank(),
+  strip.text = element_text(size = 14),
+  strip.placement = "outside"
 )
 
 color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
@@ -40,11 +43,19 @@ df_RR |>
   geom_errorbar(aes(ymin = RR_low, ymax = RR_high), width = .5) +
   coord_transform(y = "log") +
   scale_color_manual(values = color_pal) +
-  facet_wrap(~city_name, ncol = 5) +
-  theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
+  facet_wrap(~city_name, ncol = 3, nrow = 2) +
+  theme(
+    axis.title = element_text(size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = c(.83, .25),
+    legend.key.size = unit(1, "cm"),
+    legend.text = element_text(size = 12)
+  ) +
   labs(color = "", x = "", y = "RRs")
 
-ggsave("results/figure_RRs.pdf", units = "cm", width = 30, height = 10)
+ggsave("results/figure_RRs.pdf", units = "cm", width = 20, height = 15)
 
 # Ratio of RRs ------------------------------------------------------------
 
@@ -62,11 +73,19 @@ df_RR_ratio |>
   geom_point(aes(y = RR_ratio), size = 3) +
   coord_transform(y = "log") +
   scale_color_manual(values = color_pal[-1]) +
-  facet_wrap(~city_name, ncol = 5) +
-  theme(axis.text.x = element_text(angle = -30, hjust = 0)) +
+  facet_wrap(~city_name, ncol = 3, nrow = 2) +
+  theme(
+    axis.title = element_text(size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = c(.83, .25),
+    legend.key.size = unit(1, "cm"),
+    legend.text = element_text(size = 12)
+  ) +
   labs(color = "", x = "", y = "Ratio of RRs")
 
-ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 30, height = 10)
+ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 20, height = 15)
 
 # Overall city curves -----------------------------------------------------
 

@@ -10,8 +10,13 @@ library(geoarrow)
 # ggplot2 theme
 set_theme(theme_bw())
 theme_update(
-  plot.title = element_text(hjust = 0.5),
-  plot.subtitle = element_text(hjust = 0.5)
+  plot.title = element_text(size = 14, hjust = 0.5),
+  plot.subtitle = element_text(hjust = 0.5),
+  legend.title = element_text(size = 14, hjust = 0.5),
+  legend.key.height = unit(1.2, "cm"),
+  legend.text = element_text(size = 12),
+  axis.text.x = element_text(size = 12, hjust = .2),
+  axis.text.y = element_text(size = 12)
 )
 
 color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
@@ -86,7 +91,6 @@ create_list_plot_spatial <- function(fill_var = "nbhd_type") {
             scale_fill_viridis_c(limits = c(0, 100))
           }
         } +
-        theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
         labs(title = city_name, fill = fill_lab)
     }
   )

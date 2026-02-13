@@ -16,6 +16,7 @@ list_df_city <- readRDS("data/list_df_city.rds")
 list_df_city_nbhd <- readRDS("data/list_df_city_nbhd.rds")
 df_pop <- readRDS("data/df_pop.rds")
 df_area <- readRDS("data/df_area.rds")
+df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
 
 # Study city descriptives table -------------------------------------------
 
@@ -51,6 +52,11 @@ tbl_12 <- df_psy |>
 tbl_13 <- df_city |>
   summarize(death = sum(death), .by = c(city_name, year)) |>
   summarize(death = get_percentiles(death / 1000, 1), .by = city_name)
+
+# Neighorhood level deaths per year in each city
+tbl_nhd <- df_city |>
+  summarize(death = sum(death), .by = c(city_name, nbhd_geoid, year)) |>
+  summarize(nbhd_death = get_percentiles(death, 0), .by = city_name)
 
 # Temperature range over entire study period in each city
 tbl_14 <- df_city |>
@@ -96,6 +102,7 @@ tbl_1 <-
     tbl_cor,
     tbl_15,
     tbl_16,
+    tbl_nhd,
     tbl_17,
     tbl_18
   ) |>
@@ -110,6 +117,7 @@ row_labels <- c(
   spear_cor = "Greenspace & education correlation",
   n_neighborhoods = "Number of neighborhoods",
   pop_nbhd = "Neighborhood population (thousands)",
+  nbhd_death = "Deaths per year",
   nbhd_area = "Neighborhood area",
   pct_green = "% Greenspace",
   pct_educated = "% Educated"
@@ -128,7 +136,7 @@ tbl_descriptive <- tbl_1 |>
   mutate(
     row_groups = rep(
       c("City level characteristics", "Neighborhood level characteristics"),
-      c(5, 5)
+      c(5, 6)
     )
   ) |>
   gt(
@@ -206,3 +214,33 @@ list_df_city |>
   list_rbind(names_to = "city_name") %>%
   add_row(city_name = "All", total_deaths = sum(.$total_deaths)) |>
   write_csv("results/total_deaths.csv")
+
+
+# Ratio of RRs ------------------------------------------------------------
+
+table_RR_ratio <- df_RR_ratio |>
+  pivot_wider(
+    names_from = estimate,
+    values_from = c(low_edu, low_green, low_green_low_edu)
+  ) |>
+  mutate(across(-city_name, \(x) format_number(x, digits = 2))) |>
+  mutate(
+    low_edu = glue(
+      "{low_edu_RR_ratio} ({low_edu_RR_ratio_low}, {low_edu_RR_ratio_high})"
+    ),
+    low_green = glue(
+      "{low_green_RR_ratio} ({low_green_RR_ratio_low}, {low_green_RR_ratio_high})"
+    ),
+    low_green_low_edu = glue(
+      "{low_green_low_edu_RR_ratio} ({low_green_low_edu_RR_ratio_low}, {low_green_low_edu_RR_ratio_high})"
+    ),
+    .keep = "unused"
+  ) |>
+  gt(rowname_col = "city_name") |>
+  cols_label(
+    low_edu = "Low edu",
+    low_green = "Low green",
+    low_green_low_edu = "Low green/low edu"
+  )
+
+gtsave(table_RR_ratio, "results/table_RR_ratio.html")
