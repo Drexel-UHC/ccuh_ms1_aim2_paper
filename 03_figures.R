@@ -49,7 +49,9 @@ df_RR |>
     axis.text.y = element_text(size = 12),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
-    legend.position = c(.82, .25)
+    legend.position = c(.83, .25),
+    legend.key.size = unit(1, "cm"),
+    legend.text = element_text(size = 12)
   ) +
   labs(color = "", x = "", y = "RRs")
 
@@ -77,7 +79,9 @@ df_RR_ratio |>
     axis.text.y = element_text(size = 12),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
-    legend.position = c(.82, .25)
+    legend.position = c(.83, .25),
+    legend.key.size = unit(1, "cm"),
+    legend.text = element_text(size = 12)
   ) +
   labs(color = "", x = "", y = "Ratio of RRs")
 
