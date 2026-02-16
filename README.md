@@ -1,7 +1,5 @@
 # CCUH Aim 2 Paper
 
-To install the package versions used in this analysis, run `renv::activate()` and then `renv::restore()` from the `R` console with this folder as the working directory.
-
 ## Scripts
 
 ### Main Analysis:
@@ -24,4 +22,5 @@ To install the package versions used in this analysis, run `renv::activate()` an
 - `models`: A folder to store fitted models and intermediary results.
 - `results`: A folder for final figures and tables of the analysis.
 - `sup_results`: A folder for supplemental figures and tables of the analysis.
+- `renv`: A folder that activates `renv`, ensuring compatible R and package versions are used.
 - `2-legacy-code`: A folder of legacy code that is being adapted in scripts.
