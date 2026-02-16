@@ -14,6 +14,4 @@ results/
 sup_results/
 .Rproj.user
 *.zip
-renv/*
 .vscode/
-.Rprofile
