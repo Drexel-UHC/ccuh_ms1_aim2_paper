@@ -20,13 +20,14 @@ color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
 
 # Load helper functions
 source("helper_functions.R")
+source("run_config.R")
 
 # Load models
-list_df_city <- readRDS("data/list_df_city.rds")
-list_model_city <- readRDS("models/list_model_city.rds")
-list_model_city_int <- readRDS("models/list_model_city_int.rds")
-df_RR <- read_csv("results/RR_p99_interaction.csv")
-df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
+list_df_city <- readRDS(glue("data/list_df_city_{run_tag}.rds"))
+list_model_city <- readRDS(glue("models/list_model_city_{run_tag}.rds"))
+list_model_city_int <- readRDS(glue("models/list_model_city_int_{run_tag}.rds"))
+df_RR <- read_csv(glue("results/RR_p99_interaction_{run_tag}.csv"))
+df_RR_ratio <- read_csv(glue("results/RR_p99_ratio_{run_tag}.csv"))
 
 
 # RRs ---------------------------------------------------------------------
@@ -34,7 +35,8 @@ df_RR_ratio <- read_csv("results/RR_p99_ratio.csv")
 df_RR |>
   #filter_out(city_name %in% c("Guatemala City", "Panama City")) |>
   mutate(
-    nbhd_type = convert_to_label(nbhd_type),
+    # Without label_nbhd_type the profiles fall back to alphabetical order (REPRO-MIN-02)
+    nbhd_type = convert_to_label(nbhd_type, label_nbhd_type),
     city_name = city_to_factor(city_name)
   ) |>
   ggplot(aes(nbhd_type, RR, color = nbhd_type)) +
@@ -42,7 +44,8 @@ df_RR |>
   geom_point() +
   geom_errorbar(aes(ymin = RR_low, ymax = RR_high), width = .5) +
   coord_transform(y = "log") +
-  scale_color_manual(values = color_pal) +
+  # Reversed to match the now-corrected level order, keeping each profile's colour
+  scale_color_manual(values = rev(color_pal)) +
   facet_wrap(~city_name, ncol = 3, nrow = 2) +
   theme(
     axis.title = element_text(size = 14),
@@ -55,7 +58,7 @@ df_RR |>
   ) +
   labs(color = "", x = "", y = "RRs")
 
-ggsave("results/figure_RRs.pdf", units = "cm", width = 20, height = 15)
+ggsave(glue("results/figure_RRs_{run_tag}.pdf"), units = "cm", width = 20, height = 15)
 
 # Ratio of RRs ------------------------------------------------------------
 
@@ -85,7 +88,12 @@ df_RR_ratio |>
   ) +
   labs(color = "", x = "", y = "Ratio of RRs")
 
-ggsave("results/figure_RR_ratios.pdf", units = "cm", width = 20, height = 15)
+ggsave(
+  glue("results/figure_RR_ratios_{run_tag}.pdf"),
+  units = "cm",
+  width = 20,
+  height = 15
+)
 
 # Overall city curves -----------------------------------------------------
 
@@ -143,7 +151,8 @@ list_plot_TMC <-
         summarise(across(everything(), first), .by = date) |>
         ggplot(aes(popwt_temp)) +
         geom_histogram(alpha = .2, bins = 35) +
-        scale_x_continuous(limits = x_lims) +
+        # Clipping rather than filtering keeps the coldest & hottest bins (REPRO-MIN-09)
+        coord_cartesian(xlim = x_lims) +
         labs(x = "Temperature (°C)", y = "Count") +
         theme(plot.title = element_blank())
 
@@ -157,7 +166,7 @@ list_plot_TMC |>
   wrap_plots(nrow = 2)
 
 ggsave(
-  "sup_results/figure_TMC_overall.pdf",
+  glue("sup_results/figure_TMC_overall_{run_tag}.pdf"),
   units = "cm",
   width = 20,
   height = 20
@@ -220,7 +229,8 @@ list_plot_TMC_int <-
         summarise(across(everything(), first), .by = date) |>
         ggplot(aes(popwt_temp)) +
         geom_histogram(alpha = .2, bins = 35) +
-        scale_x_continuous(limits = x_lims) +
+        # Clipping rather than filtering keeps the coldest & hottest bins (REPRO-MIN-09)
+        coord_cartesian(xlim = x_lims) +
         labs(x = "Temperature (°C)", y = "Count") +
         theme(plot.title = element_blank())
 
@@ -239,7 +249,7 @@ list_plot_TMC_int |>
   )
 
 ggsave(
-  "sup_results/figure_TMC_nbhd_type.pdf",
+  glue("sup_results/figure_TMC_nbhd_type_{run_tag}.pdf"),
   units = "cm",
   width = 20,
   height = 20

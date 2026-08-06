@@ -7,10 +7,11 @@ library(SALURhelper)
 
 # Load helper functions
 source("helper_functions.R")
+source("run_config.R")
 
 # Load models
-list_model_city <- readRDS("models/list_model_city.rds")
-list_model_city_int <- readRDS("models/list_model_city_int.rds")
+list_model_city <- readRDS(glue("models/list_model_city_{run_tag}.rds"))
+list_model_city_int <- readRDS(glue("models/list_model_city_int_{run_tag}.rds"))
 
 # Predictions for overall curve -------------------------------------------
 
@@ -33,7 +34,7 @@ df_pred <- list_model_city |>
   }) |>
   list_rbind(names_to = "city_name")
 
-write_csv(df_pred, "results/RR_p99_overall.csv")
+write_csv(df_pred, glue("results/RR_p99_overall_{run_tag}.csv"))
 
 
 # Predictions for neighborhood types --------------------------------------
@@ -62,7 +63,7 @@ df_pred_int <-
   }) |>
   list_rbind(names_to = "city_name")
 
-write_csv(df_pred_int, "results/RR_p99_interaction.csv")
+write_csv(df_pred_int, glue("results/RR_p99_interaction_{run_tag}.csv"))
 
 
 # Get ratio of RRs --------------------------------------------------------
@@ -100,4 +101,4 @@ df_RR_ratio <-
     .by = city_name
   )
 
-write_csv(df_RR_ratio, "results/RR_p99_ratio.csv")
+write_csv(df_RR_ratio, glue("results/RR_p99_ratio_{run_tag}.csv"))

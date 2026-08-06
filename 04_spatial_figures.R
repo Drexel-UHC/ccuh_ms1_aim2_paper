@@ -23,9 +23,10 @@ color_pal <- rev(RColorBrewer::brewer.pal(4, "BrBG"))
 
 # Load helper functions
 source("helper_functions.R")
+source("run_config.R")
 
 # Load data of nbhd_type for each nbhd_geoid
-list_df_city_nbhd <- readRDS("data/list_df_city_nbhd.rds")
+list_df_city_nbhd <- readRDS(glue("data/list_df_city_nbhd_{run_tag}.rds"))
 
 
 # Extract spatial boundaries ----------------------------------------------
@@ -121,7 +122,7 @@ wrap_plots(
 
 # Save plots
 ggsave(
-  "results/figures_spatial.pdf",
+  glue("results/figures_spatial_{run_tag}.pdf"),
   units = "cm",
   width = f_width,
   height = f_height
@@ -141,7 +142,7 @@ wrap_plots(
 
 # Save plots
 ggsave(
-  "sup_results/figures_spatial_green.pdf",
+  glue("sup_results/figures_spatial_green_{run_tag}.pdf"),
   units = "cm",
   width = f_width,
   height = f_height
@@ -158,7 +159,7 @@ wrap_plots(
 
 # Save plots
 ggsave(
-  "sup_results/figures_spatial_edu.pdf",
+  glue("sup_results/figures_spatial_edu_{run_tag}.pdf"),
   units = "cm",
   width = f_width,
   height = f_height

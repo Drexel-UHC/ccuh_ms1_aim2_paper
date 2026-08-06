@@ -21,7 +21,7 @@ label_nbhd_type <- c(
   "High Green High Edu"
 )
 
-convert_to_label <- function(string, label_order) {
+convert_to_label <- function(string, label_order = label_nbhd_type) {
   string |>
     str_replace_all("_", " ") |>
     str_to_title() |>
@@ -33,10 +33,22 @@ RR_ratio_est <- function(fit1, fit2, se1, se2) {
   c(
     RR_ratio = exp(fit1 - fit2),
     # the second part here is the equivalent to the usual +-1.96 * SE, only the see here is
-    # calculated using the delta method for the difference of two independent estimates sqrt(var1-var2)
+    # calculated using the delta method for the difference of two independent estimates sqrt(var1+var2)
     RR_ratio_low = exp(fit1 - fit2 - qnorm(.975) * sqrt(se1^2 + se2^2)),
     RR_ratio_high = exp(fit1 - fit2 + qnorm(.975) * sqrt(se1^2 + se2^2))
   )
+}
+
+# Keep only a cross-basis's attributes, which is all crossreduce() reads, and drop
+# its millions of rows before the model components are saved (REPRO-MAJ-02)
+slim_crossbasis <- function(cb) {
+  attr_keep <- c("df", "range", "lag", "argvar", "arglag", "group", "class")
+  cb_slim <- unclass(cb)[1, , drop = FALSE]
+  attributes(cb_slim) <- c(
+    attributes(cb_slim),
+    attributes(cb)[intersect(attr_keep, names(attributes(cb)))]
+  )
+  cb_slim
 }
 
 # Helper function for labeling
