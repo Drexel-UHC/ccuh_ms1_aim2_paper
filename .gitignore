@@ -15,3 +15,5 @@ sup_results/
 .Rproj.user
 *.zip
 .vscode/
+# Default device output when the scripts are run with Rscript
+Rplots.pdf
