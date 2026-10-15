@@ -19,6 +19,10 @@ editor_options:
   chunk_output_type: console
 ---
 
+<!-- Exploratory, not part of the reported pipeline, and it does not currently render:
+it reads data/merged_data_by_age.csv, which the pipeline never creates, and the
+correlation-plot chunk onward references undefined objects (REPRO-MIN-06). -->
+
 # Set Up
 
 ```{r}

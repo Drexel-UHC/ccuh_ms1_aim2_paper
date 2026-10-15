@@ -1,3 +1,7 @@
+# Exploratory, not part of the reported pipeline. Despite its name it does not
+# currently implement tertiles: it still fits the median-split dummies built by
+# 00_import_data.R, and its 3x3 case_when() recycles length-2 cutoffs (REPRO-MAJ-03).
+
 library(tidyverse)
 library(glue)
 library(gnm)
@@ -5,10 +9,12 @@ library(dlnm)
 library(splines)
 library(SALURhelper)
 
+source("../run_config.R")
+
 
 # Load data
-list_df_city <- readRDS("data/list_df_city.rds")
-list_model_city <- readRDS("models/list_model_city.rds")
+list_df_city <- readRDS(glue("../data/list_df_city_{run_tag}.rds"))
+list_model_city <- readRDS(glue("../models/list_model_city_{run_tag}.rds"))
 
 
 # Create tertile nbhd_type factor -----------------------------------------
@@ -116,4 +122,5 @@ list_model_city_int <-
     .progress = TRUE
   )
 
-saveRDS(list_model_city_int, "models/list_model_city_int.rds")
+# Retargeted here; this used to overwrite the primary interaction model (REPRO-MAJ-03)
+saveRDS(list_model_city_int, glue("list_model_city_int_tertile_{run_tag}.rds"))
